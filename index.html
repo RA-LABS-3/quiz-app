@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RA Labs Quiz</title>
 
-<!-- Optional nicer font when online; falls back to system fonts automatically if offline -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
@@ -129,14 +128,39 @@
     margin-bottom: 6px;
   }
 
+  /* ---- Quiz duration box (highlighted, larger) ---- */
+  .duration-box {
+    background: linear-gradient(135deg, rgba(124,92,255,0.12), rgba(79,209,197,0.08));
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-top: 16px;
+  }
+
+  .duration-box label.field-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-2);
+    margin-bottom: 10px;
+  }
+
   input[type="number"] {
     background: var(--surface-2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--accent);
     color: var(--text);
-    padding: 10px 12px;
-    border-radius: 8px;
-    width: 140px;
-    font-size: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    width: 160px;
+    font-size: 22px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    text-align: center;
+  }
+
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 3px rgba(79,209,197,0.2);
   }
 
   button {
@@ -153,6 +177,7 @@
 
   button:hover { transform: translateY(-1px); opacity: 0.95; }
   button:active { transform: translateY(0); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
   button.secondary {
     background: var(--surface-2);
@@ -161,6 +186,93 @@
   }
 
   .hidden { display: none; }
+
+  /* ---- Timer / progress (quiz screen) ---- */
+  .timer-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 8px;
+    padding: 18px 22px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.15), rgba(79,209,197,0.10));
+    border: 1px solid var(--border);
+  }
+
+  .q-progress-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .timer-time {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: all 0.3s ease;
+  }
+
+  .timer-time.critical {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: var(--danger);
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 1s linear, background 0.3s ease;
+  }
+
+  .progress-fill.critical {
+    background: var(--danger);
+  }
+
+  .option-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+
+  .option-label:hover { border-color: var(--accent); }
+
+  .text-answer {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+  }
 
   footer {
     color: var(--text-dim);
@@ -192,11 +304,9 @@
         <input type="file" id="fileInput" accept=".txt">
       </div>
 
-      <div class="row">
-        <div>
-          <label class="field-label">Quiz duration (minutes)</label>
-          <input type="number" id="timerMinutes" min="1" max="180" placeholder="e.g. 20">
-        </div>
+      <div class="duration-box">
+        <label class="field-label">⏱️ Quiz Duration (minutes)</label>
+        <input type="number" id="timerMinutes" min="1" max="180" placeholder="e.g. 20">
       </div>
 
       <div class="row">
@@ -204,10 +314,25 @@
       </div>
     </section>
 
-    <!-- SCREEN 2: Quiz (hidden for now) -->
+    <!-- SCREEN 2: Quiz -->
     <section id="view-quiz" class="card hidden">
-      <h2>Quiz screen placeholder</h2>
-      <p class="subtitle">We'll build this next.</p>
+      <div class="timer-wrap">
+        <div>
+          <div class="q-progress-label">⏱️ Time Remaining</div>
+          <div id="timerDisplay" class="timer-time">00:00</div>
+        </div>
+        <div class="q-progress-label" id="questionProgressLabel">Question 1 of 1</div>
+      </div>
+      <div class="progress-track">
+        <div id="progressFill" class="progress-fill" style="width:100%;"></div>
+      </div>
+
+      <div id="questionArea"></div>
+
+      <div class="row" style="justify-content:space-between; margin-top:24px;">
+        <button id="prevBtn" class="secondary">⬅ Previous</button>
+        <button id="nextBtn">Next ➡</button>
+      </div>
     </section>
 
     <!-- SCREEN 3: Results (hidden for now) -->
@@ -221,9 +346,7 @@
   <footer>Built by RA Labs</footer>
 
 <script>
-  // -----------------------------
-  // PARSER
-  // -----------------------------
+  // ================= PARSER =================
   function parseQuestions(rawText) {
     const errors = [];
     const blocks = rawText.split(/\n\s*---\s*\n?/).map(b => b.trim()).filter(b => b.length > 0);
@@ -278,9 +401,7 @@
     return { questions, errors };
   }
 
-  // -----------------------------
-  // WIRE UP START BUTTON
-  // -----------------------------
+  // ================= DOM REFS =================
   const startBtn = document.getElementById('startBtn');
   const questionsInput = document.getElementById('questionsInput');
   const fileInput = document.getElementById('fileInput');
@@ -288,8 +409,24 @@
   const viewInput = document.getElementById('view-input');
   const viewQuiz = document.getElementById('view-quiz');
 
-  let quizState = { questions: [], timerMinutes: 0 };
+  const timerDisplay = document.getElementById('timerDisplay');
+  const progressFill = document.getElementById('progressFill');
+  const questionArea = document.getElementById('questionArea');
+  const questionProgressLabel = document.getElementById('questionProgressLabel');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
 
+  // ================= STATE =================
+  let quizState = {
+    questions: [],
+    totalSeconds: 0,
+    remainingSeconds: 0,
+    currentIndex: 0,
+    answers: {},
+    timerInterval: null
+  };
+
+  // ================= ERROR DISPLAY =================
   function showErrors(errors) {
     let box = document.getElementById('errorBox');
     if (!box) {
@@ -306,6 +443,7 @@
     if (box) box.remove();
   }
 
+  // ================= START QUIZ =================
   startBtn.addEventListener('click', async () => {
     clearErrors();
 
@@ -322,13 +460,98 @@
     if (errors.length > 0) { showErrors(errors); return; }
 
     quizState.questions = questions;
-    quizState.timerMinutes = minutes;
+    quizState.totalSeconds = minutes * 60;
+    quizState.remainingSeconds = minutes * 60;
+    quizState.currentIndex = 0;
+    quizState.answers = {};
 
     viewInput.classList.add('hidden');
     viewQuiz.classList.remove('hidden');
-    console.log('Parsed successfully:', quizState);
+
+    renderQuestion();
+    startTimer();
+  });
+
+  // ================= TIMER =================
+  function formatTime(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function updateTimerUI() {
+    timerDisplay.textContent = formatTime(quizState.remainingSeconds);
+    const pct = (quizState.remainingSeconds / quizState.totalSeconds) * 100;
+    progressFill.style.width = pct + '%';
+
+    const critical = quizState.remainingSeconds <= 60;
+    timerDisplay.classList.toggle('critical', critical);
+    progressFill.classList.toggle('critical', critical);
+  }
+
+  function startTimer() {
+    updateTimerUI();
+    quizState.timerInterval = setInterval(() => {
+      quizState.remainingSeconds--;
+      updateTimerUI();
+      if (quizState.remainingSeconds <= 0) {
+        clearInterval(quizState.timerInterval);
+        alert("Time's up! (Auto-submit will be wired up in a later step.)");
+      }
+    }, 1000);
+  }
+
+  // ================= QUESTION RENDERING =================
+  function renderQuestion() {
+    const q = quizState.questions[quizState.currentIndex];
+    questionProgressLabel.textContent = `Question ${quizState.currentIndex + 1} of ${quizState.questions.length}`;
+
+    let html = `<div style="font-size:17px; margin-bottom:16px;"><b>Q${quizState.currentIndex + 1}.</b> ${q.question}</div>`;
+
+    if (q.type === 'MCQ') {
+      const letters = ['A', 'B', 'C', 'D'];
+      html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+      q.options.forEach((opt, i) => {
+        const letter = letters[i];
+        const checked = quizState.answers[q.number] === letter ? 'checked' : '';
+        html += `
+          <label class="option-label">
+            <input type="radio" name="mcq-${q.number}" value="${letter}" ${checked} onchange="saveAnswer(${q.number}, this.value)">
+            <span>${letter}) ${opt}</span>
+          </label>`;
+      });
+      html += '</div>';
+    } else {
+      const val = quizState.answers[q.number] || '';
+      html += `<input type="text" class="text-answer" id="textAnswer-${q.number}" value="${val}" placeholder="Type your answer..." oninput="saveAnswer(${q.number}, this.value)">`;
+    }
+
+    questionArea.innerHTML = html;
+
+    prevBtn.disabled = quizState.currentIndex === 0;
+    nextBtn.textContent = quizState.currentIndex === quizState.questions.length - 1 ? 'Finish (Submit coming soon)' : 'Next ➡';
+  }
+
+  function saveAnswer(qNumber, value) {
+    quizState.answers[qNumber] = value;
+  }
+
+  prevBtn.addEventListener('click', () => {
+    if (quizState.currentIndex > 0) {
+      quizState.currentIndex--;
+      renderQuestion();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (quizState.currentIndex < quizState.questions.length - 1) {
+      quizState.currentIndex++;
+      renderQuestion();
+    } else {
+      alert("This is the last question. Submit will be wired up in a later step.");
+    }
   });
 </script>
- 
+
 </body>
 </html>
