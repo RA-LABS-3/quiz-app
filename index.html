@@ -129,7 +129,6 @@
     margin-bottom: 6px;
   }
 
-  /* ---- Quiz duration box ---- */
   .duration-box {
     background: linear-gradient(135deg, rgba(124,92,255,0.12), rgba(79,209,197,0.08));
     border: 1px solid var(--accent);
@@ -248,9 +247,8 @@
     font-size: 12px;
   }
 
-  .hidden { display: none; }
+  .hidden { display: none !important; }
 
-  /* ---- Timer / progress (quiz screen) ---- */
   .timer-wrap {
     display: flex;
     align-items: center;
@@ -353,7 +351,6 @@
     margin-top: 8px;
   }
 
-  /* ---- Warning + feedback banners ---- */
   .warning-banner {
     color: var(--warning);
     font-weight: 600;
@@ -410,7 +407,6 @@
     border-top: 1px solid rgba(255,255,255,0.08);
   }
 
-  /* ---- Results dashboard ---- */
   .results-summary {
     background: linear-gradient(135deg, #14161f, #1b1e2b);
     border: 1px solid var(--border);
@@ -538,12 +534,6 @@
       </div>
     </section>
 
-    <!-- Previous attempts kept in-memory for this session only -->
-    <section id="historyCard" class="history-card hidden">
-      <h2>📜 Previous Attempts (this session)</h2>
-      <div id="historyList"></div>
-    </section>
-
     <!-- SCREEN 2: Quiz -->
     <section id="view-quiz" class="card hidden">
       <div class="timer-wrap">
@@ -563,7 +553,7 @@
       <div id="warningBox"></div>
       <div id="feedbackBox"></div>
 
-      <div class="row" style="justify-content:space-between; margin-top:24px;">
+      <div class="row" style="justify-space-between; margin-top:24px;">
         <button id="prevBtn" class="secondary">⬅ Previous</button>
         <button id="nextBtn">Next ➡</button>
         <button id="submitBtn" class="submit-btn hidden">🏁 Submit Quiz</button>
@@ -576,6 +566,12 @@
       <div id="resultsBreakdown"></div>
       <button id="newQuizBtn" class="secondary">↺ Start a New Quiz</button>
       <button id="retakeQuizBtn" class="retake-btn">🔁 Retake This Quiz</button>
+    </section>
+
+    <!-- Previous attempts: only visible on configuration screen or results screen -->
+    <section id="historyCard" class="history-card hidden">
+      <h2>📜 Previous Attempts (this session)</h2>
+      <div id="historyList"></div>
     </section>
 
   </main>
@@ -670,17 +666,15 @@
     totalSeconds: 0,
     remainingSeconds: 0,
     currentIndex: 0,
-    answers: {},   // { qNumber: "A" | "typed text" }
-    checked: {},   // { qNumber: true } once locked in via Check Answer
+    answers: {},
+    checked: {},
     timerInterval: null,
     submitted: false
   };
 
-  // Every finished quiz (submitted or timed out) is pushed here.
-  // Lives only in this tab's memory for the current session — cleared on refresh/close.
   let quizHistory = [];
 
-  // ================= ERROR DISPLAY (input screen) =================
+  // ================= ERROR DISPLAY =================
   function showErrors(errors) {
     let box = document.getElementById('errorBox');
     if (!box) {
@@ -726,6 +720,10 @@
 
     viewInput.classList.add('hidden');
     viewResults.classList.add('hidden');
+    
+    // Explicitly hide history section while quiz is active
+    historyCard.classList.add('hidden');
+    
     viewQuiz.classList.remove('hidden');
 
     renderQuestion();
@@ -757,7 +755,7 @@
       updateTimerUI();
       if (quizState.remainingSeconds <= 0) {
         clearInterval(quizState.timerInterval);
-        finalizeQuiz(true); // auto-submit
+        finalizeQuiz(true);
       }
     }, 1000);
   }
@@ -812,7 +810,6 @@
   }
 
   function onAnswerChanged(qNumber, value) {
-    // Only reachable while unlocked (inputs are disabled once checked)
     quizState.answers[qNumber] = value;
   }
 
@@ -828,7 +825,7 @@
 
     warningBox.innerHTML = '';
     quizState.checked[q.number] = true;
-    renderQuestion(); // re-render to lock inputs and show feedback
+    renderQuestion();
   });
 
   function isAnswerCorrect(q) {
@@ -837,7 +834,6 @@
     if (q.type === 'MCQ') {
       return userAnswer === q.answer;
     }
-    // SHORT / FILL — case-insensitive exact match
     return userAnswer.toString().trim().toLowerCase() === q.answer.trim().toLowerCase();
   }
 
@@ -1012,7 +1008,6 @@
 
     resultsBreakdown.innerHTML = breakdownHtml;
 
-    // Save this attempt to in-memory history so it's not lost when starting a new quiz
     const attemptNumber = quizHistory.length + 1;
     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     quizHistory.push({
@@ -1021,16 +1016,19 @@
       summaryHTML: resultsSummary.innerHTML,
       breakdownHTML: resultsBreakdown.innerHTML
     });
-    renderHistoryList();
 
     viewQuiz.classList.add('hidden');
     viewResults.classList.remove('hidden');
+    
+    // Show history card again after submission
+    renderHistoryList();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ================= HISTORY LIST (session-only) =================
+  // ================= HISTORY LIST =================
   function renderHistoryList() {
-    if (quizHistory.length === 0) {
+    // Only render if there's history AND a quiz is not actively running
+    if (quizHistory.length === 0 || !viewQuiz.classList.contains('hidden')) {
       historyCard.classList.add('hidden');
       return;
     }
@@ -1051,49 +1049,41 @@
     if (!entry) return;
     resultsSummary.innerHTML = entry.summaryHTML;
     resultsBreakdown.innerHTML = entry.breakdownHTML;
+
     viewInput.classList.add('hidden');
     viewQuiz.classList.add('hidden');
     viewResults.classList.remove('hidden');
+    
+    renderHistoryList();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ================= START A NEW QUIZ =================
   newQuizBtn.addEventListener('click', () => {
+    clearInterval(quizState.timerInterval);
     viewResults.classList.add('hidden');
+    viewQuiz.classList.add('hidden');
     viewInput.classList.remove('hidden');
-    questionsInput.value = '';
-    fileInput.value = '';
-    timerMinutesInput.value = '';
-    clearErrors();
-    renderHistoryList(); // shows past attempts, if any, on the start screen
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    renderHistoryList();
   });
 
-  // ================= RETAKE THIS QUIZ =================
-  // Reuses the same question set and original timer duration; wipes answers/progress only.
   retakeQuizBtn.addEventListener('click', () => {
-    if (!quizState.questions || quizState.questions.length === 0) return;
-
-    quizState = {
-      questions: quizState.questions,
-      totalSeconds: quizState.totalSeconds,
-      remainingSeconds: quizState.totalSeconds,
-      currentIndex: 0,
-      answers: {},
-      checked: {},
-      timerInterval: null,
-      submitted: false
-    };
+    clearInterval(quizState.timerInterval);
+    quizState.remainingSeconds = quizState.totalSeconds;
+    quizState.currentIndex = 0;
+    quizState.answers = {};
+    quizState.checked = {};
+    quizState.submitted = false;
 
     viewResults.classList.add('hidden');
-    viewInput.classList.add('hidden');
+    
+    // Explicitly hide history section when retaking
+    historyCard.classList.add('hidden');
+    
     viewQuiz.classList.remove('hidden');
-
     renderQuestion();
     startTimer();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 </script>
-
 </body>
 </html>
