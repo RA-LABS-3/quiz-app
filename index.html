@@ -185,6 +185,17 @@
     color: var(--text);
   }
 
+  button.check-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--accent-2);
+    color: var(--accent-2);
+    margin-top: 16px;
+  }
+
+  button.check-btn:hover {
+    background: rgba(79,209,197,0.12);
+  }
+
   .hidden { display: none; }
 
   /* ---- Timer / progress (quiz screen) ---- */
@@ -274,6 +285,63 @@
     font-size: 14px;
   }
 
+  /* ---- Warning + feedback banners ---- */
+  .warning-banner {
+    color: var(--warning);
+    font-weight: 600;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  .feedback-banner {
+    margin-top: 16px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .feedback-banner.correct {
+    background: rgba(61, 220, 132, 0.1);
+    border: 1px solid var(--success);
+    color: #b7f4d0;
+  }
+
+  .feedback-banner.incorrect {
+    background: rgba(255, 92, 102, 0.1);
+    border: 1px solid var(--danger);
+    color: #ffc2c6;
+  }
+
+  .feedback-banner b.title {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .feedback-option-row {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+
+  .feedback-option-row.is-correct {
+    background: rgba(61, 220, 132, 0.15);
+    border-left: 4px solid var(--success);
+  }
+
+  .feedback-option-row.is-wrong-pick {
+    background: rgba(255, 92, 102, 0.15);
+    border-left: 4px solid var(--danger);
+  }
+
+  .feedback-explanation {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
   footer {
     color: var(--text-dim);
     font-size: 12px;
@@ -328,6 +396,10 @@
       </div>
 
       <div id="questionArea"></div>
+
+      <button id="checkBtn" class="check-btn">✅ Check Answer</button>
+      <div id="warningBox"></div>
+      <div id="feedbackBox"></div>
 
       <div class="row" style="justify-content:space-between; margin-top:24px;">
         <button id="prevBtn" class="secondary">⬅ Previous</button>
@@ -415,6 +487,9 @@
   const questionProgressLabel = document.getElementById('questionProgressLabel');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const checkBtn = document.getElementById('checkBtn');
+  const warningBox = document.getElementById('warningBox');
+  const feedbackBox = document.getElementById('feedbackBox');
 
   // ================= STATE =================
   let quizState = {
@@ -422,11 +497,12 @@
     totalSeconds: 0,
     remainingSeconds: 0,
     currentIndex: 0,
-    answers: {},
+    answers: {},      // { qNumber: "A" | "typed text" }
+    checked: {},       // { qNumber: true } once Check Answer has been clicked
     timerInterval: null
   };
 
-  // ================= ERROR DISPLAY =================
+  // ================= ERROR DISPLAY (input screen) =================
   function showErrors(errors) {
     let box = document.getElementById('errorBox');
     if (!box) {
@@ -464,6 +540,7 @@
     quizState.remainingSeconds = minutes * 60;
     quizState.currentIndex = 0;
     quizState.answers = {};
+    quizState.checked = {};
 
     viewInput.classList.add('hidden');
     viewQuiz.classList.remove('hidden');
@@ -516,26 +593,102 @@
         const checked = quizState.answers[q.number] === letter ? 'checked' : '';
         html += `
           <label class="option-label">
-            <input type="radio" name="mcq-${q.number}" value="${letter}" ${checked} onchange="saveAnswer(${q.number}, this.value)">
+            <input type="radio" name="mcq-${q.number}" value="${letter}" ${checked} onchange="onAnswerChanged(${q.number}, this.value)">
             <span>${letter}) ${opt}</span>
           </label>`;
       });
       html += '</div>';
     } else {
       const val = quizState.answers[q.number] || '';
-      html += `<input type="text" class="text-answer" id="textAnswer-${q.number}" value="${val}" placeholder="Type your answer..." oninput="saveAnswer(${q.number}, this.value)">`;
+      html += `<input type="text" class="text-answer" id="textAnswer-${q.number}" value="${val}" placeholder="Type your answer..." oninput="onAnswerChanged(${q.number}, this.value)">`;
     }
 
     questionArea.innerHTML = html;
 
     prevBtn.disabled = quizState.currentIndex === 0;
     nextBtn.textContent = quizState.currentIndex === quizState.questions.length - 1 ? 'Finish (Submit coming soon)' : 'Next ➡';
+
+    warningBox.innerHTML = '';
+    feedbackBox.innerHTML = '';
+    if (quizState.checked[q.number]) {
+      renderFeedback(q);
+    }
   }
 
-  function saveAnswer(qNumber, value) {
+  function onAnswerChanged(qNumber, value) {
     quizState.answers[qNumber] = value;
+    // clear feedback if the user changes their answer after checking
+    if (quizState.checked[qNumber]) {
+      quizState.checked[qNumber] = false;
+      feedbackBox.innerHTML = '';
+    }
   }
 
+  // ================= CHECK ANSWER =================
+  checkBtn.addEventListener('click', () => {
+    const q = quizState.questions[quizState.currentIndex];
+    const userAnswer = quizState.answers[q.number];
+
+    if (userAnswer === undefined || userAnswer === null || userAnswer.toString().trim() === '') {
+      warningBox.innerHTML = '<div class="warning-banner">⚠️ Please select or enter an answer before checking.</div>';
+      return;
+    }
+
+    warningBox.innerHTML = '';
+    quizState.checked[q.number] = true;
+    renderFeedback(q);
+  });
+
+  function isAnswerCorrect(q) {
+    const userAnswer = quizState.answers[q.number];
+    if (q.type === 'MCQ') {
+      return userAnswer === q.answer;
+    }
+    // SHORT / FILL — case-insensitive exact match
+    return userAnswer.toString().trim().toLowerCase() === q.answer.trim().toLowerCase();
+  }
+
+  function renderFeedback(q) {
+    const correct = isAnswerCorrect(q);
+    const userAnswer = quizState.answers[q.number];
+
+    let html = '';
+
+    if (correct) {
+      html += `<div class="feedback-banner correct">
+        <b class="title">✅ Correct!</b>`;
+      if (q.explanation) {
+        html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
+      }
+      html += `</div>`;
+    } else {
+      html += `<div class="feedback-banner incorrect"><b class="title">❌ Incorrect.</b>`;
+
+      if (q.type === 'MCQ') {
+        const letters = ['A', 'B', 'C', 'D'];
+        q.options.forEach((opt, i) => {
+          const letter = letters[i];
+          let rowClass = 'feedback-option-row';
+          let tag = '';
+          if (letter === q.answer) { rowClass += ' is-correct'; tag = ' <b>← Correct Answer</b>'; }
+          if (letter === userAnswer && letter !== q.answer) { rowClass += ' is-wrong-pick'; tag = ' <b>← Your Answer</b>'; }
+          html += `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
+        });
+      } else {
+        html += `<div class="feedback-option-row is-wrong-pick">Your answer: <b>${userAnswer}</b></div>`;
+        html += `<div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>`;
+      }
+
+      if (q.explanation) {
+        html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
+      }
+      html += `</div>`;
+    }
+
+    feedbackBox.innerHTML = html;
+  }
+
+  // ================= NAVIGATION =================
   prevBtn.addEventListener('click', () => {
     if (quizState.currentIndex > 0) {
       quizState.currentIndex--;
