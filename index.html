@@ -201,6 +201,53 @@
     background: linear-gradient(135deg, var(--danger), #c9414a);
   }
 
+  button.retake-btn {
+    background: linear-gradient(135deg, var(--accent-2), #2fae9e);
+    margin-left: 10px;
+  }
+
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+
+  .history-card h2 {
+    margin-top: 0;
+    font-size: 17px;
+  }
+
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+
+  .history-row .history-label {
+    color: var(--text);
+  }
+
+  .history-row .history-meta {
+    color: var(--text-dim);
+    font-size: 12px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  button.view-history-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
   .hidden { display: none; }
 
   /* ---- Timer / progress (quiz screen) ---- */
@@ -491,6 +538,12 @@
       </div>
     </section>
 
+    <!-- Previous attempts kept in-memory for this session only -->
+    <section id="historyCard" class="history-card hidden">
+      <h2>📜 Previous Attempts (this session)</h2>
+      <div id="historyList"></div>
+    </section>
+
     <!-- SCREEN 2: Quiz -->
     <section id="view-quiz" class="card hidden">
       <div class="timer-wrap">
@@ -522,6 +575,7 @@
       <div id="resultsSummary" class="results-summary"></div>
       <div id="resultsBreakdown"></div>
       <button id="newQuizBtn" class="secondary">↺ Start a New Quiz</button>
+      <button id="retakeQuizBtn" class="retake-btn">🔁 Retake This Quiz</button>
     </section>
 
   </main>
@@ -606,6 +660,9 @@
   const resultsSummary = document.getElementById('resultsSummary');
   const resultsBreakdown = document.getElementById('resultsBreakdown');
   const newQuizBtn = document.getElementById('newQuizBtn');
+  const retakeQuizBtn = document.getElementById('retakeQuizBtn');
+  const historyCard = document.getElementById('historyCard');
+  const historyList = document.getElementById('historyList');
 
   // ================= STATE =================
   let quizState = {
@@ -618,6 +675,10 @@
     timerInterval: null,
     submitted: false
   };
+
+  // Every finished quiz (submitted or timed out) is pushed here.
+  // Lives only in this tab's memory for the current session — cleared on refresh/close.
+  let quizHistory = [];
 
   // ================= ERROR DISPLAY (input screen) =================
   function showErrors(errors) {
@@ -951,6 +1012,46 @@
 
     resultsBreakdown.innerHTML = breakdownHtml;
 
+    // Save this attempt to in-memory history so it's not lost when starting a new quiz
+    const attemptNumber = quizHistory.length + 1;
+    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    quizHistory.push({
+      label: `Attempt ${attemptNumber} — ${correctCount}/${total} (${pct}%)`,
+      meta: `${timeLabel} • ${auto ? 'Auto-submitted (time expired)' : 'Submitted'}`,
+      summaryHTML: resultsSummary.innerHTML,
+      breakdownHTML: resultsBreakdown.innerHTML
+    });
+    renderHistoryList();
+
+    viewQuiz.classList.add('hidden');
+    viewResults.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ================= HISTORY LIST (session-only) =================
+  function renderHistoryList() {
+    if (quizHistory.length === 0) {
+      historyCard.classList.add('hidden');
+      return;
+    }
+    historyCard.classList.remove('hidden');
+    historyList.innerHTML = quizHistory.map((entry, idx) => `
+      <div class="history-row">
+        <div>
+          <span class="history-label">${entry.label}</span>
+          <span class="history-meta">${entry.meta}</span>
+        </div>
+        <button class="view-history-btn secondary" onclick="viewHistoryEntry(${idx})">View</button>
+      </div>
+    `).join('');
+  }
+
+  function viewHistoryEntry(idx) {
+    const entry = quizHistory[idx];
+    if (!entry) return;
+    resultsSummary.innerHTML = entry.summaryHTML;
+    resultsBreakdown.innerHTML = entry.breakdownHTML;
+    viewInput.classList.add('hidden');
     viewQuiz.classList.add('hidden');
     viewResults.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -964,6 +1065,32 @@
     fileInput.value = '';
     timerMinutesInput.value = '';
     clearErrors();
+    renderHistoryList(); // shows past attempts, if any, on the start screen
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ================= RETAKE THIS QUIZ =================
+  // Reuses the same question set and original timer duration; wipes answers/progress only.
+  retakeQuizBtn.addEventListener('click', () => {
+    if (!quizState.questions || quizState.questions.length === 0) return;
+
+    quizState = {
+      questions: quizState.questions,
+      totalSeconds: quizState.totalSeconds,
+      remainingSeconds: quizState.totalSeconds,
+      currentIndex: 0,
+      answers: {},
+      checked: {},
+      timerInterval: null,
+      submitted: false
+    };
+
+    viewResults.classList.add('hidden');
+    viewInput.classList.add('hidden');
+    viewQuiz.classList.remove('hidden');
+
+    renderQuestion();
+    startTimer();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 </script>
