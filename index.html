@@ -40,7 +40,7 @@
 
   header {
     width: 100%;
-    padding: 22px 24px;
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -52,22 +52,17 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     font-weight: 800;
     font-size: 20px;
     letter-spacing: 0.3px;
   }
 
-  .brand-mark {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 800;
-    color: #10121a;
+  .brand-logo {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+    display: block;
   }
 
   main {
@@ -506,7 +501,7 @@
 
   <header>
     <div class="brand">
-      <div class="brand-mark">RA</div>
+      <img src="logo.png" alt="RA Labs Logo" class="brand-logo">
       RA Labs Quiz
     </div>
   </header>
