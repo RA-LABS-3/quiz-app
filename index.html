@@ -553,7 +553,7 @@
       <div id="warningBox"></div>
       <div id="feedbackBox"></div>
 
-      <div class="row" style="justify-space-between; margin-top:24px;">
+      <div class="row" style="justify-content: space-between; margin-top:24px;">
         <button id="prevBtn" class="secondary">⬅ Previous</button>
         <button id="nextBtn">Next ➡</button>
         <button id="submitBtn" class="submit-btn hidden">🏁 Submit Quiz</button>
@@ -893,19 +893,8 @@
 
   // ================= SUBMIT =================
   submitBtn.addEventListener('click', () => {
-    const answeredCount = Object.keys(quizState.answers).filter(
-      k => quizState.answers[k] !== undefined && quizState.answers[k].toString().trim() !== ''
-    ).length;
-    const unanswered = quizState.questions.length - answeredCount;
-
-    let confirmMsg = "Are you sure you want to submit the quiz?";
-    if (unanswered > 0) {
-      confirmMsg = `You have ${unanswered} unanswered question(s). Are you sure you want to submit?`;
-    }
-    if (confirm(confirmMsg)) {
-      clearInterval(quizState.timerInterval);
-      finalizeQuiz(false);
-    }
+    clearInterval(quizState.timerInterval);
+    finalizeQuiz(false);
   });
 
   // ================= RESULTS =================
@@ -1063,12 +1052,14 @@
     viewResults.classList.add('hidden');
     viewQuiz.classList.add('hidden');
     viewInput.classList.remove('hidden');
-    
     renderHistoryList();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
   retakeQuizBtn.addEventListener('click', () => {
     clearInterval(quizState.timerInterval);
+    
+    // Reset attempt state keeping the same questions
     quizState.remainingSeconds = quizState.totalSeconds;
     quizState.currentIndex = 0;
     quizState.answers = {};
@@ -1076,13 +1067,13 @@
     quizState.submitted = false;
 
     viewResults.classList.add('hidden');
-    
-    // Explicitly hide history section when retaking
+    viewInput.classList.add('hidden');
     historyCard.classList.add('hidden');
-    
     viewQuiz.classList.remove('hidden');
+
     renderQuestion();
     startTimer();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 </script>
 </body>
