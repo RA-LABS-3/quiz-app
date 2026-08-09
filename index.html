@@ -1,181 +1,1089 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quiz App</title>
-  <style>
-    /* Basic Page Styling */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RA Labs Quiz</title>
 
-    .quiz-container {
-      background: #ffffff;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      max-width: 500px;
-      width: 100%;
-    }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    .submit-btn {
-      background-color: #0066ff;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s ease;
-    }
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #171a23;
+    --surface-2: #1f2330;
+    --border: #2a2f3f;
+    --text: #eef0f5;
+    --text-dim: #9aa0ae;
+    --accent: #7c5cff;
+    --accent-2: #4fd1c5;
+    --danger: #ff5c66;
+    --success: #3ddc84;
+    --warning: #ffb347;
+    --skip: #6b7280;
+    --radius: 14px;
+  }
 
-    .submit-btn:hover {
-      background-color: #0052cc;
-    }
+  * { box-sizing: border-box; }
 
-    /* In-App Modal Background Overlay */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      z-index: 1000;
-    }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #191d29, #0f1117 60%);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 
-    /* Modal Active State */
-    .modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
+  header {
+    width: 100%;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+    background: rgba(23, 26, 35, 0.7);
+    backdrop-filter: blur(6px);
+  }
 
-    /* Custom In-App Dialog Box */
-    .modal-box {
-      background: #ffffff;
-      padding: 24px;
-      border-radius: 12px;
-      max-width: 360px;
-      width: 90%;
-      text-align: center;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-      transform: scale(0.9);
-      transition: transform 0.2s ease;
-    }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: 0.3px;
+  }
 
-    .modal-overlay.active .modal-box {
-      transform: scale(1);
-    }
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #10121a;
+  }
 
-    .modal-box h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      color: #1a1a1a;
-      font-size: 18px;
-    }
+  main {
+    width: 100%;
+    max-width: 760px;
+    padding: 40px 20px 80px;
+  }
 
-    .modal-box p {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
 
-    .modal-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
+  .card h2 {
+    margin-top: 0;
+    font-size: 20px;
+  }
 
-    .btn-cancel {
-      background-color: #e4e6eb;
-      color: #1a1a1a;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      flex: 1;
-    }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: -8px;
+    margin-bottom: 20px;
+  }
 
-    .btn-cancel:hover {
-      background-color: #d8dadf;
-    }
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    resize: vertical;
+  }
 
-    .btn-confirm {
-      background-color: #0066ff;
-      color: #ffffff;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 6px;
-      font-weight: 600;
-      cursor: pointer;
-      flex: 1;
-    }
+  input[type="file"] {
+    color: var(--text-dim);
+  }
 
-    .btn-confirm:hover {
-      background-color: #0052cc;
-    }
-  </style>
+  .row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 16px;
+  }
+
+  label.field-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .duration-box {
+    background: linear-gradient(135deg, rgba(124,92,255,0.12), rgba(79,209,197,0.08));
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-top: 16px;
+  }
+
+  .duration-box label.field-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-2);
+    margin-bottom: 10px;
+  }
+
+  input[type="number"] {
+    background: var(--surface-2);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 14px 16px;
+    border-radius: 10px;
+    width: 160px;
+    font-size: 22px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    text-align: center;
+  }
+
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-2);
+    box-shadow: 0 0 0 3px rgba(79,209,197,0.2);
+  }
+
+  button {
+    background: linear-gradient(135deg, var(--accent), #6a4bff);
+    color: white;
+    border: none;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  button:hover { transform: translateY(-1px); opacity: 0.95; }
+  button:active { transform: translateY(0); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  button.secondary {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  button.check-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--accent-2);
+    color: var(--accent-2);
+    margin-top: 16px;
+  }
+
+  button.check-btn:hover {
+    background: rgba(79,209,197,0.12);
+  }
+
+  button.submit-btn {
+    background: linear-gradient(135deg, var(--danger), #c9414a);
+  }
+
+  button.retake-btn {
+    background: linear-gradient(135deg, var(--accent-2), #2fae9e);
+    margin-left: 10px;
+  }
+
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+
+  .history-card h2 {
+    margin-top: 0;
+    font-size: 17px;
+  }
+
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+
+  .history-row .history-label {
+    color: var(--text);
+  }
+
+  .history-row .history-meta {
+    color: var(--text-dim);
+    font-size: 12px;
+    display: block;
+    margin-top: 2px;
+  }
+
+  button.view-history-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .hidden { display: none !important; }
+
+  .timer-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 8px;
+    padding: 18px 22px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.15), rgba(79,209,197,0.10));
+    border: 1px solid var(--border);
+  }
+
+  .q-progress-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .timer-time {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: all 0.3s ease;
+  }
+
+  .timer-time.critical {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: var(--danger);
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 1s linear, background 0.3s ease;
+  }
+
+  .progress-fill.critical {
+    background: var(--danger);
+  }
+
+  .option-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+
+  .option-label:hover { border-color: var(--accent); }
+
+  .option-label.locked {
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
+
+  .text-answer {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .text-answer:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+  }
+
+  .lock-note {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-top: 8px;
+  }
+
+  .warning-banner {
+    color: var(--warning);
+    font-weight: 600;
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  .feedback-banner {
+    margin-top: 16px;
+    padding: 16px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .feedback-banner.correct {
+    background: rgba(61, 220, 132, 0.1);
+    border: 1px solid var(--success);
+    color: #b7f4d0;
+  }
+
+  .feedback-banner.incorrect {
+    background: rgba(255, 92, 102, 0.1);
+    border: 1px solid var(--danger);
+    color: #ffc2c6;
+  }
+
+  .feedback-banner b.title {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .feedback-option-row {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+
+  .feedback-option-row.is-correct {
+    background: rgba(61, 220, 132, 0.15);
+    border-left: 4px solid var(--success);
+  }
+
+  .feedback-option-row.is-wrong-pick {
+    background: rgba(255, 92, 102, 0.15);
+    border-left: 4px solid var(--danger);
+  }
+
+  .feedback-explanation {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .results-summary {
+    background: linear-gradient(135deg, #14161f, #1b1e2b);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .results-summary h2 {
+    margin: 0 0 14px 0;
+    font-size: 22px;
+  }
+
+  .results-summary .stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-top: 18px;
+  }
+
+  .stat-block {
+    min-width: 120px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 4px;
+  }
+
+  .stat-value.good { color: var(--success); }
+  .stat-value.mid { color: var(--warning); }
+  .stat-value.bad { color: var(--danger); }
+
+  .status-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  .status-pill.auto { background: rgba(255,179,71,0.15); color: var(--warning); border: 1px solid var(--warning); }
+  .status-pill.manual { background: rgba(61,220,132,0.15); color: var(--success); border: 1px solid var(--success); }
+
+  .breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+  }
+
+  .breakdown-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .badge {
+    flex-shrink: 0;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+  }
+
+  .badge.pass { background: var(--success); color: #0a2a17; }
+  .badge.fail { background: var(--danger); color: #2a0a0d; }
+  .badge.skip { background: var(--skip); color: #f2f2f2; }
+
+  #newQuizBtn {
+    margin-top: 10px;
+  }
+
+  footer {
+    color: var(--text-dim);
+    font-size: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+</style>
 </head>
 <body>
 
-  <!-- Main Quiz Container -->
-  <div class="quiz-container">
-    <h2>Sample Quiz</h2>
-    <p>Select your answers and submit when ready.</p>
-    
-    <!-- Instead of calling confirm(), open the in-app modal -->
-    <button class="submit-btn" onclick="openModal()">Submit Quiz</button>
-  </div>
-
-  <!-- Custom In-App Modal Overlay -->
-  <div class="modal-overlay" id="confirmModal">
-    <div class="modal-box">
-      <h3>Confirm Submission</h3>
-      <p>Are you sure you want to submit the quiz?</p>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-confirm" onclick="confirmSubmission()">OK</button>
-      </div>
+  <header>
+    <div class="brand">
+      <div class="brand-mark">RA</div>
+      RA Labs Quiz
     </div>
-  </div>
+  </header>
 
-  <script>
-    const modal = document.getElementById('confirmModal');
+  <main>
 
-    // Show the in-app modal
-    function openModal() {
-      modal.classList.add('active');
+    <!-- SCREEN 1: Upload / Paste questions -->
+    <section id="view-input" class="card">
+      <h2>Start a new quiz</h2>
+      <p class="subtitle">Paste your questions below, or upload a .txt file in the same format.</p>
+
+      <textarea id="questionsInput" placeholder="Paste your formatted questions here..."></textarea>
+
+      <div class="row">
+        <input type="file" id="fileInput" accept=".txt">
+      </div>
+
+      <div class="duration-box">
+        <label class="field-label">⏱️ Quiz Duration (minutes)</label>
+        <input type="number" id="timerMinutes" min="1" max="180" placeholder="e.g. 20">
+      </div>
+
+      <div class="row">
+        <button id="startBtn">Start Quiz</button>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: Quiz -->
+    <section id="view-quiz" class="card hidden">
+      <div class="timer-wrap">
+        <div>
+          <div class="q-progress-label">⏱️ Time Remaining</div>
+          <div id="timerDisplay" class="timer-time">00:00</div>
+        </div>
+        <div class="q-progress-label" id="questionProgressLabel">Question 1 of 1</div>
+      </div>
+      <div class="progress-track">
+        <div id="progressFill" class="progress-fill" style="width:100%;"></div>
+      </div>
+
+      <div id="questionArea"></div>
+
+      <button id="checkBtn" class="check-btn">✅ Check Answer</button>
+      <div id="warningBox"></div>
+      <div id="feedbackBox"></div>
+
+      <div class="row" style="justify-space-between; margin-top:24px;">
+        <button id="prevBtn" class="secondary">⬅ Previous</button>
+        <button id="nextBtn">Next ➡</button>
+        <button id="submitBtn" class="submit-btn hidden">🏁 Submit Quiz</button>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: Results -->
+    <section id="view-results" class="hidden">
+      <div id="resultsSummary" class="results-summary"></div>
+      <div id="resultsBreakdown"></div>
+      <button id="newQuizBtn" class="secondary">↺ Start a New Quiz</button>
+      <button id="retakeQuizBtn" class="retake-btn">🔁 Retake This Quiz</button>
+    </section>
+
+    <!-- Previous attempts: only visible on configuration screen or results screen -->
+    <section id="historyCard" class="history-card hidden">
+      <h2>📜 Previous Attempts (this session)</h2>
+      <div id="historyList"></div>
+    </section>
+
+  </main>
+
+  <footer>Built by RA Labs</footer>
+
+<script>
+  // ================= PARSER =================
+  function parseQuestions(rawText) {
+    const errors = [];
+    const blocks = rawText.split(/\n\s*---\s*\n?/).map(b => b.trim()).filter(b => b.length > 0);
+
+    if (blocks.length === 0) {
+      errors.push("No questions found. Make sure each question block is separated by a line containing only ---");
+      return { questions: [], errors };
+    }
+    if (blocks.length > 100) {
+      errors.push(`Too many questions (${blocks.length} found). Maximum allowed is 100.`);
+      return { questions: [], errors };
     }
 
-    // Hide the in-app modal
-    function closeModal() {
-      modal.classList.remove('active');
+    const questions = [];
+
+    blocks.forEach((block, idx) => {
+      const qNum = idx + 1;
+      const lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      let type = null, question = null, answer = null, explanation = null;
+      const options = {};
+
+      for (const line of lines) {
+        if (/^TYPE:/i.test(line)) type = line.replace(/^TYPE:/i, '').trim().toUpperCase();
+        else if (/^Q:/i.test(line)) question = line.replace(/^Q:/i, '').trim();
+        else if (/^[A-D]\)/.test(line)) options[line[0].toUpperCase()] = line.slice(2).trim();
+        else if (/^ANSWER:/i.test(line)) answer = line.replace(/^ANSWER:/i, '').trim();
+        else if (/^EXPLANATION:/i.test(line)) explanation = line.replace(/^EXPLANATION:/i, '').trim();
+      }
+
+      if (!type) { errors.push(`Error in Question ${qNum}: Missing TYPE.`); return; }
+      if (!['MCQ', 'SHORT', 'FILL'].includes(type)) { errors.push(`Error in Question ${qNum}: TYPE must be MCQ, SHORT, or FILL.`); return; }
+      if (!question) { errors.push(`Error in Question ${qNum}: Missing question text (Q:).`); return; }
+      if (!answer) { errors.push(`Error in Question ${qNum}: Missing ANSWER.`); return; }
+
+      if (type === 'MCQ') {
+        const hasAllFour = ['A', 'B', 'C', 'D'].every(letter => options[letter]);
+        if (!hasAllFour) { errors.push(`Error in Question ${qNum}: MCQ requires exactly 4 options (A, B, C, D).`); return; }
+        if (!['A', 'B', 'C', 'D'].includes(answer.toUpperCase())) { errors.push(`Error in Question ${qNum}: ANSWER must be a single letter A-D for MCQ.`); return; }
+
+        questions.push({
+          number: qNum, type, question,
+          options: [options.A, options.B, options.C, options.D],
+          answer: answer.toUpperCase(),
+          explanation: explanation || ""
+        });
+      } else {
+        questions.push({ number: qNum, type, question, answer, explanation: explanation || "" });
+      }
+    });
+
+    return { questions, errors };
+  }
+
+  // ================= DOM REFS =================
+  const startBtn = document.getElementById('startBtn');
+  const questionsInput = document.getElementById('questionsInput');
+  const fileInput = document.getElementById('fileInput');
+  const timerMinutesInput = document.getElementById('timerMinutes');
+  const viewInput = document.getElementById('view-input');
+  const viewQuiz = document.getElementById('view-quiz');
+  const viewResults = document.getElementById('view-results');
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  const progressFill = document.getElementById('progressFill');
+  const questionArea = document.getElementById('questionArea');
+  const questionProgressLabel = document.getElementById('questionProgressLabel');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const checkBtn = document.getElementById('checkBtn');
+  const warningBox = document.getElementById('warningBox');
+  const feedbackBox = document.getElementById('feedbackBox');
+  const resultsSummary = document.getElementById('resultsSummary');
+  const resultsBreakdown = document.getElementById('resultsBreakdown');
+  const newQuizBtn = document.getElementById('newQuizBtn');
+  const retakeQuizBtn = document.getElementById('retakeQuizBtn');
+  const historyCard = document.getElementById('historyCard');
+  const historyList = document.getElementById('historyList');
+
+  // ================= STATE =================
+  let quizState = {
+    questions: [],
+    totalSeconds: 0,
+    remainingSeconds: 0,
+    currentIndex: 0,
+    answers: {},
+    checked: {},
+    timerInterval: null,
+    submitted: false
+  };
+
+  let quizHistory = [];
+
+  // ================= ERROR DISPLAY =================
+  function showErrors(errors) {
+    let box = document.getElementById('errorBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'errorBox';
+      box.style.cssText = "background:#2a1518;border:1px solid var(--danger);color:#ffb3b8;padding:14px;border-radius:10px;margin-top:16px;font-size:13px;line-height:1.6;";
+      viewInput.appendChild(box);
+    }
+    box.innerHTML = '<b>Please fix the following before starting:</b><br>' + errors.map(e => `• ${e}`).join('<br>');
+  }
+
+  function clearErrors() {
+    const box = document.getElementById('errorBox');
+    if (box) box.remove();
+  }
+
+  // ================= START QUIZ =================
+  startBtn.addEventListener('click', async () => {
+    clearErrors();
+
+    let rawText = questionsInput.value.trim();
+    if (fileInput.files.length > 0) {
+      rawText = (await fileInput.files[0].text()).trim();
+    }
+    if (!rawText) { showErrors(["Please paste your questions or upload a .txt file."]); return; }
+
+    const minutes = parseInt(timerMinutesInput.value, 10);
+    if (!minutes || minutes <= 0) { showErrors(["Please enter a valid quiz duration in minutes."]); return; }
+
+    const { questions, errors } = parseQuestions(rawText);
+    if (errors.length > 0) { showErrors(errors); return; }
+
+    quizState = {
+      questions,
+      totalSeconds: minutes * 60,
+      remainingSeconds: minutes * 60,
+      currentIndex: 0,
+      answers: {},
+      checked: {},
+      timerInterval: null,
+      submitted: false
+    };
+
+    viewInput.classList.add('hidden');
+    viewResults.classList.add('hidden');
+    
+    // Explicitly hide history section while quiz is active
+    historyCard.classList.add('hidden');
+    
+    viewQuiz.classList.remove('hidden');
+
+    renderQuestion();
+    startTimer();
+  });
+
+  // ================= TIMER =================
+  function formatTime(totalSeconds) {
+    const s = Math.max(0, totalSeconds);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+  }
+
+  function updateTimerUI() {
+    timerDisplay.textContent = formatTime(quizState.remainingSeconds);
+    const pct = Math.max(0, (quizState.remainingSeconds / quizState.totalSeconds) * 100);
+    progressFill.style.width = pct + '%';
+
+    const critical = quizState.remainingSeconds <= 60;
+    timerDisplay.classList.toggle('critical', critical);
+    progressFill.classList.toggle('critical', critical);
+  }
+
+  function startTimer() {
+    updateTimerUI();
+    quizState.timerInterval = setInterval(() => {
+      quizState.remainingSeconds--;
+      updateTimerUI();
+      if (quizState.remainingSeconds <= 0) {
+        clearInterval(quizState.timerInterval);
+        finalizeQuiz(true);
+      }
+    }, 1000);
+  }
+
+  // ================= QUESTION RENDERING =================
+  function renderQuestion() {
+    const q = quizState.questions[quizState.currentIndex];
+    const locked = !!quizState.checked[q.number];
+
+    questionProgressLabel.textContent = `Question ${quizState.currentIndex + 1} of ${quizState.questions.length}`;
+
+    let html = `<div style="font-size:17px; margin-bottom:16px;"><b>Q${quizState.currentIndex + 1}.</b> ${q.question}</div>`;
+
+    if (q.type === 'MCQ') {
+      const letters = ['A', 'B', 'C', 'D'];
+      html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+      q.options.forEach((opt, i) => {
+        const letter = letters[i];
+        const isChecked = quizState.answers[q.number] === letter ? 'checked' : '';
+        const disabledAttr = locked ? 'disabled' : '';
+        html += `
+          <label class="option-label ${locked ? 'locked' : ''}">
+            <input type="radio" name="mcq-${q.number}" value="${letter}" ${isChecked} ${disabledAttr} onchange="onAnswerChanged(${q.number}, this.value)">
+            <span>${letter}) ${opt}</span>
+          </label>`;
+      });
+      html += '</div>';
+    } else {
+      const val = quizState.answers[q.number] || '';
+      const disabledAttr = locked ? 'disabled' : '';
+      html += `<input type="text" class="text-answer" id="textAnswer-${q.number}" value="${val}" placeholder="Type your answer..." ${disabledAttr} oninput="onAnswerChanged(${q.number}, this.value)">`;
     }
 
-    // Runs when user clicks OK inside the modal
-    function confirmSubmission() {
-      closeModal();
-      
-      // Place your actual submit logic here
-      alert("Quiz submitted successfully!"); 
-      // e.g., document.getElementById('quizForm').submit();
+    if (locked) {
+      html += `<div class="lock-note">🔒 Answer locked — this question has already been checked.</div>`;
     }
-  </script>
 
+    questionArea.innerHTML = html;
+
+    checkBtn.classList.toggle('hidden', locked);
+
+    prevBtn.disabled = quizState.currentIndex === 0;
+    const isLast = quizState.currentIndex === quizState.questions.length - 1;
+    nextBtn.classList.toggle('hidden', isLast);
+    submitBtn.classList.toggle('hidden', !isLast);
+
+    warningBox.innerHTML = '';
+    feedbackBox.innerHTML = '';
+    if (locked) {
+      renderFeedback(q);
+    }
+  }
+
+  function onAnswerChanged(qNumber, value) {
+    quizState.answers[qNumber] = value;
+  }
+
+  // ================= CHECK ANSWER =================
+  checkBtn.addEventListener('click', () => {
+    const q = quizState.questions[quizState.currentIndex];
+    const userAnswer = quizState.answers[q.number];
+
+    if (userAnswer === undefined || userAnswer === null || userAnswer.toString().trim() === '') {
+      warningBox.innerHTML = '<div class="warning-banner">⚠️ Please select or enter an answer before checking.</div>';
+      return;
+    }
+
+    warningBox.innerHTML = '';
+    quizState.checked[q.number] = true;
+    renderQuestion();
+  });
+
+  function isAnswerCorrect(q) {
+    const userAnswer = quizState.answers[q.number];
+    if (userAnswer === undefined || userAnswer === null || userAnswer.toString().trim() === '') return false;
+    if (q.type === 'MCQ') {
+      return userAnswer === q.answer;
+    }
+    return userAnswer.toString().trim().toLowerCase() === q.answer.trim().toLowerCase();
+  }
+
+  function renderFeedback(q) {
+    const correct = isAnswerCorrect(q);
+    const userAnswer = quizState.answers[q.number];
+
+    let html = '';
+
+    if (correct) {
+      html += `<div class="feedback-banner correct"><b class="title">✅ Correct!</b>`;
+      if (q.explanation) {
+        html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
+      }
+      html += `</div>`;
+    } else {
+      html += `<div class="feedback-banner incorrect"><b class="title">❌ Incorrect.</b>`;
+
+      if (q.type === 'MCQ') {
+        const letters = ['A', 'B', 'C', 'D'];
+        q.options.forEach((opt, i) => {
+          const letter = letters[i];
+          let rowClass = 'feedback-option-row';
+          let tag = '';
+          if (letter === q.answer) { rowClass += ' is-correct'; tag = ' <b>← Correct Answer</b>'; }
+          if (letter === userAnswer && letter !== q.answer) { rowClass += ' is-wrong-pick'; tag = ' <b>← Your Answer</b>'; }
+          html += `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
+        });
+      } else {
+        html += `<div class="feedback-option-row is-wrong-pick">Your answer: <b>${userAnswer}</b></div>`;
+        html += `<div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>`;
+      }
+
+      if (q.explanation) {
+        html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
+      }
+      html += `</div>`;
+    }
+
+    feedbackBox.innerHTML = html;
+  }
+
+  // ================= NAVIGATION =================
+  prevBtn.addEventListener('click', () => {
+    if (quizState.currentIndex > 0) {
+      quizState.currentIndex--;
+      renderQuestion();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (quizState.currentIndex < quizState.questions.length - 1) {
+      quizState.currentIndex++;
+      renderQuestion();
+    }
+  });
+
+  // ================= SUBMIT =================
+  submitBtn.addEventListener('click', () => {
+    const answeredCount = Object.keys(quizState.answers).filter(
+      k => quizState.answers[k] !== undefined && quizState.answers[k].toString().trim() !== ''
+    ).length;
+    const unanswered = quizState.questions.length - answeredCount;
+
+    let confirmMsg = "Are you sure you want to submit the quiz?";
+    if (unanswered > 0) {
+      confirmMsg = `You have ${unanswered} unanswered question(s). Are you sure you want to submit?`;
+    }
+    if (confirm(confirmMsg)) {
+      clearInterval(quizState.timerInterval);
+      finalizeQuiz(false);
+    }
+  });
+
+  // ================= RESULTS =================
+  function finalizeQuiz(auto) {
+    if (quizState.submitted) return;
+    quizState.submitted = true;
+    clearInterval(quizState.timerInterval);
+
+    let correctCount = 0, wrongCount = 0, skippedCount = 0;
+    quizState.questions.forEach(q => {
+      const userAnswer = quizState.answers[q.number];
+      const wasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer.toString().trim() !== '';
+      if (!wasAnswered) { skippedCount++; return; }
+      if (isAnswerCorrect(q)) correctCount++; else wrongCount++;
+    });
+
+    const total = quizState.questions.length;
+    const pct = total > 0 ? Math.round((correctCount / total) * 1000) / 10 : 0;
+    const scoreClass = pct >= 80 ? 'good' : (pct >= 50 ? 'mid' : 'bad');
+    const statusHtml = auto
+      ? `<span class="status-pill auto">⏰ TIME EXPIRED — AUTO-SUBMITTED</span>`
+      : `<span class="status-pill manual">✅ SUBMITTED</span>`;
+
+    resultsSummary.innerHTML = `
+      <h2>📊 Quiz Results</h2>
+      ${statusHtml}
+      <div class="stat-row">
+        <div class="stat-block">
+          <div class="stat-label">Score</div>
+          <div class="stat-value ${scoreClass}">${correctCount} / ${total}</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">Percentage</div>
+          <div class="stat-value ${scoreClass}">${pct}%</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">Correct</div>
+          <div class="stat-value good">${correctCount}</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">Incorrect</div>
+          <div class="stat-value bad">${wrongCount}</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">Skipped</div>
+          <div class="stat-value">${skippedCount}</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-label">Time Left at Submission</div>
+          <div class="stat-value" style="font-size:18px;">${formatTime(quizState.remainingSeconds)}</div>
+        </div>
+      </div>
+    `;
+
+    let breakdownHtml = '';
+    quizState.questions.forEach(q => {
+      const userAnswer = quizState.answers[q.number];
+      const wasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer.toString().trim() !== '';
+      let badgeHtml, resultLine;
+
+      if (!wasAnswered) {
+        badgeHtml = '<span class="badge skip">SKIPPED</span>';
+      } else if (isAnswerCorrect(q)) {
+        badgeHtml = '<span class="badge pass">CORRECT</span>';
+      } else {
+        badgeHtml = '<span class="badge fail">INCORRECT</span>';
+      }
+
+      if (q.type === 'MCQ') {
+        const letters = ['A', 'B', 'C', 'D'];
+        resultLine = '<div style="margin:10px 0;">';
+        q.options.forEach((opt, i) => {
+          const letter = letters[i];
+          let rowClass = 'feedback-option-row';
+          let tag = '';
+          if (letter === q.answer) { rowClass += ' is-correct'; tag = ' <b>(Correct Answer)</b>'; }
+          if (letter === userAnswer && letter !== q.answer) { rowClass += ' is-wrong-pick'; tag = ' <b>(Your Answer)</b>'; }
+          else if (letter === userAnswer && letter === q.answer) { tag += ' <b>(Your Answer ✓)</b>'; }
+          resultLine += `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
+        });
+        resultLine += '</div>';
+      } else {
+        resultLine = `<div style="margin:10px 0;">
+          <div class="feedback-option-row">Your answer: <b>${wasAnswered ? userAnswer : '(no answer given)'}</b></div>
+          <div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>
+        </div>`;
+      }
+
+      breakdownHtml += `
+        <div class="breakdown-card">
+          <div class="breakdown-card-header">
+            <div><b>Q${q.number}.</b> ${q.question}</div>
+            ${badgeHtml}
+          </div>
+          ${resultLine}
+          ${q.explanation ? `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>` : ''}
+        </div>
+      `;
+    });
+
+    resultsBreakdown.innerHTML = breakdownHtml;
+
+    const attemptNumber = quizHistory.length + 1;
+    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    quizHistory.push({
+      label: `Attempt ${attemptNumber} — ${correctCount}/${total} (${pct}%)`,
+      meta: `${timeLabel} • ${auto ? 'Auto-submitted (time expired)' : 'Submitted'}`,
+      summaryHTML: resultsSummary.innerHTML,
+      breakdownHTML: resultsBreakdown.innerHTML
+    });
+
+    viewQuiz.classList.add('hidden');
+    viewResults.classList.remove('hidden');
+    
+    // Show history card again after submission
+    renderHistoryList();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ================= HISTORY LIST =================
+  function renderHistoryList() {
+    // Only render if there's history AND a quiz is not actively running
+    if (quizHistory.length === 0 || !viewQuiz.classList.contains('hidden')) {
+      historyCard.classList.add('hidden');
+      return;
+    }
+    historyCard.classList.remove('hidden');
+    historyList.innerHTML = quizHistory.map((entry, idx) => `
+      <div class="history-row">
+        <div>
+          <span class="history-label">${entry.label}</span>
+          <span class="history-meta">${entry.meta}</span>
+        </div>
+        <button class="view-history-btn secondary" onclick="viewHistoryEntry(${idx})">View</button>
+      </div>
+    `).join('');
+  }
+
+  function viewHistoryEntry(idx) {
+    const entry = quizHistory[idx];
+    if (!entry) return;
+    resultsSummary.innerHTML = entry.summaryHTML;
+    resultsBreakdown.innerHTML = entry.breakdownHTML;
+
+    viewInput.classList.add('hidden');
+    viewQuiz.classList.add('hidden');
+    viewResults.classList.remove('hidden');
+    
+    renderHistoryList();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  newQuizBtn.addEventListener('click', () => {
+    clearInterval(quizState.timerInterval);
+    viewResults.classList.add('hidden');
+    viewQuiz.classList.add('hidden');
+    viewInput.classList.remove('hidden');
+    
+    renderHistoryList();
+  });
+
+  retakeQuizBtn.addEventListener('click', () => {
+    clearInterval(quizState.timerInterval);
+    quizState.remainingSeconds = quizState.totalSeconds;
+    quizState.currentIndex = 0;
+    quizState.answers = {};
+    quizState.checked = {};
+    quizState.submitted = false;
+
+    viewResults.classList.add('hidden');
+    
+    // Explicitly hide history section when retaking
+    historyCard.classList.add('hidden');
+    
+    viewQuiz.classList.remove('hidden');
+    renderQuestion();
+    startTimer();
+  });
+</script>
 </body>
 </html>
