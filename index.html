@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quiz App</title>
   <style>
-    /* Basic Page Styling */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: #f4f6f8;
@@ -34,37 +33,32 @@
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
-      transition: background 0.2s ease;
     }
 
     .submit-btn:hover {
       background-color: #0052cc;
     }
 
-    /* In-App Modal Background Overlay */
+    /* Modal Overlay - Hidden by default */
     .modal-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      display: flex;
+      background: rgba(0, 0, 0, 0.5);
+      display: none; /* Keeps it hidden until openModal() is called */
       justify-content: center;
       align-items: center;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
       z-index: 1000;
     }
 
-    /* Modal Active State */
+    /* Only visible when active */
     .modal-overlay.active {
-      opacity: 1;
-      pointer-events: auto;
+      display: flex;
     }
 
-    /* Custom In-App Dialog Box */
+    /* Modal Box */
     .modal-box {
       background: #ffffff;
       padding: 24px;
@@ -73,18 +67,11 @@
       width: 90%;
       text-align: center;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-      transform: scale(0.9);
-      transition: transform 0.2s ease;
-    }
-
-    .modal-overlay.active .modal-box {
-      transform: scale(1);
     }
 
     .modal-box h3 {
       margin-top: 0;
       margin-bottom: 12px;
-      color: #1a1a1a;
       font-size: 18px;
     }
 
@@ -97,7 +84,6 @@
     .modal-actions {
       display: flex;
       gap: 12px;
-      justify-content: flex-end;
     }
 
     .btn-cancel {
@@ -111,10 +97,6 @@
       flex: 1;
     }
 
-    .btn-cancel:hover {
-      background-color: #d8dadf;
-    }
-
     .btn-confirm {
       background-color: #0066ff;
       color: #ffffff;
@@ -125,31 +107,27 @@
       cursor: pointer;
       flex: 1;
     }
-
-    .btn-confirm:hover {
-      background-color: #0052cc;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Main Quiz Container -->
+  <!-- Your Main Quiz Area -->
   <div class="quiz-container">
-    <h2>Sample Quiz</h2>
-    <p>Select your answers and submit when ready.</p>
+    <h2>Your Quiz</h2>
+    <p>Answer your questions here...</p>
     
-    <!-- Instead of calling confirm(), open the in-app modal -->
-    <button class="submit-btn" onclick="openModal()">Submit Quiz</button>
+    <!-- Clicking this triggers openModal() -->
+    <button class="submit-btn" type="button" onclick="openModal()">Submit Quiz</button>
   </div>
 
-  <!-- Custom In-App Modal Overlay -->
+  <!-- Confirmation Modal (Starts hidden) -->
   <div class="modal-overlay" id="confirmModal">
     <div class="modal-box">
       <h3>Confirm Submission</h3>
       <p>Are you sure you want to submit the quiz?</p>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-confirm" onclick="confirmSubmission()">OK</button>
+        <button class="btn-cancel" type="button" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" type="button" onclick="confirmSubmission()">OK</button>
       </div>
     </div>
   </div>
@@ -157,23 +135,18 @@
   <script>
     const modal = document.getElementById('confirmModal');
 
-    // Show the in-app modal
     function openModal() {
       modal.classList.add('active');
     }
 
-    // Hide the in-app modal
     function closeModal() {
       modal.classList.remove('active');
     }
 
-    // Runs when user clicks OK inside the modal
     function confirmSubmission() {
       closeModal();
-      
-      // Place your actual submit logic here
-      alert("Quiz submitted successfully!"); 
-      // e.g., document.getElementById('quizForm').submit();
+      // Execute your quiz submit logic here
+      alert("Submitted!"); 
     }
   </script>
 
