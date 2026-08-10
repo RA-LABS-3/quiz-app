@@ -195,6 +195,16 @@
     background: linear-gradient(135deg, var(--danger), #c9414a);
   }
 
+  button.quit-btn {
+    background: rgba(255, 92, 102, 0.12);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+  }
+
+  button.quit-btn:hover {
+    background: rgba(255, 92, 102, 0.25);
+  }
+
   button.retake-btn {
     background: linear-gradient(135deg, var(--accent-2), #2fae9e);
     margin-left: 10px;
@@ -455,6 +465,7 @@
 
   .status-pill.auto { background: rgba(255,179,71,0.15); color: var(--warning); border: 1px solid var(--warning); }
   .status-pill.manual { background: rgba(61,220,132,0.15); color: var(--success); border: 1px solid var(--success); }
+  .status-pill.quit { background: rgba(255,92,102,0.15); color: var(--danger); border: 1px solid var(--danger); }
 
   .breakdown-card {
     background: var(--surface);
@@ -550,6 +561,7 @@
 
       <div class="row" style="justify-content: space-between; margin-top:24px;">
         <button id="prevBtn" class="secondary">⬅ Previous</button>
+        <button id="quitBtn" class="quit-btn">🚪 Quit Quiz</button>
         <button id="nextBtn">Next ➡</button>
         <button id="submitBtn" class="submit-btn hidden">🏁 Submit Quiz</button>
       </div>
@@ -645,6 +657,7 @@
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
   const submitBtn = document.getElementById('submitBtn');
+  const quitBtn = document.getElementById('quitBtn');
   const checkBtn = document.getElementById('checkBtn');
   const warningBox = document.getElementById('warningBox');
   const feedbackBox = document.getElementById('feedbackBox');
@@ -750,7 +763,7 @@
       updateTimerUI();
       if (quizState.remainingSeconds <= 0) {
         clearInterval(quizState.timerInterval);
-        finalizeQuiz(true);
+        finalizeQuiz('auto');
       }
     }, 1000);
   }
@@ -886,14 +899,21 @@
     }
   });
 
-  // ================= SUBMIT =================
+  // ================= SUBMIT & QUIT =================
   submitBtn.addEventListener('click', () => {
     clearInterval(quizState.timerInterval);
-    finalizeQuiz(false);
+    finalizeQuiz('manual');
+  });
+
+  quitBtn.addEventListener('click', () => {
+    if (confirm("Are you sure you want to quit this quiz session? Your answers up to this point will be graded.")) {
+      clearInterval(quizState.timerInterval);
+      finalizeQuiz('quit');
+    }
   });
 
   // ================= RESULTS =================
-  function finalizeQuiz(auto) {
+  function finalizeQuiz(mode = 'manual') {
     if (quizState.submitted) return;
     quizState.submitted = true;
     clearInterval(quizState.timerInterval);
@@ -909,9 +929,17 @@
     const total = quizState.questions.length;
     const pct = total > 0 ? Math.round((correctCount / total) * 1000) / 10 : 0;
     const scoreClass = pct >= 80 ? 'good' : (pct >= 50 ? 'mid' : 'bad');
-    const statusHtml = auto
-      ? `<span class="status-pill auto">⏰ TIME EXPIRED — AUTO-SUBMITTED</span>`
-      : `<span class="status-pill manual">✅ SUBMITTED</span>`;
+    
+    let statusHtml = `<span class="status-pill manual">✅ SUBMITTED</span>`;
+    let modeText = 'Submitted';
+
+    if (mode === 'auto') {
+      statusHtml = `<span class="status-pill auto">⏰ TIME EXPIRED — AUTO-SUBMITTED</span>`;
+      modeText = 'Auto-submitted (time expired)';
+    } else if (mode === 'quit') {
+      statusHtml = `<span class="status-pill quit">🚪 QUIETED EARLY</span>`;
+      modeText = 'Quit early';
+    }
 
     resultsSummary.innerHTML = `
       <h2>📊 Quiz Results</h2>
@@ -938,7 +966,7 @@
           <div class="stat-value">${skippedCount}</div>
         </div>
         <div class="stat-block">
-          <div class="stat-label">Time Left at Submission</div>
+          <div class="stat-label">Time Left at End</div>
           <div class="stat-value" style="font-size:18px;">${formatTime(quizState.remainingSeconds)}</div>
         </div>
       </div>
@@ -996,7 +1024,7 @@
     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     quizHistory.push({
       label: `Attempt ${attemptNumber} — ${correctCount}/${total} (${pct}%)`,
-      meta: `${timeLabel} • ${auto ? 'Auto-submitted (time expired)' : 'Submitted'}`,
+      meta: `${timeLabel} • ${modeText}`,
       summaryHTML: resultsSummary.innerHTML,
       breakdownHTML: resultsBreakdown.innerHTML
     });
@@ -1062,7 +1090,6 @@
     quizState.submitted = false;
 
     viewResults.classList.add('hidden');
-    viewInput.classList.add('hidden');
     historyCard.classList.add('hidden');
     viewQuiz.classList.remove('hidden');
 
