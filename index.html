@@ -547,8 +547,12 @@
           <div class="q-progress-label">⏱️ Time Remaining</div>
           <div id="timerDisplay" class="timer-time">00:00</div>
         </div>
+
+        <button id="pauseBtn" class="secondary">⏸ Pause</button>
+
         <div class="q-progress-label" id="questionProgressLabel">Question 1 of 1</div>
       </div>
+
       <div class="progress-track">
         <div id="progressFill" class="progress-fill" style="width:100%;"></div>
       </div>
@@ -595,6 +599,7 @@
       errors.push("No questions found. Make sure each question block is separated by a line containing only ---");
       return { questions: [], errors };
     }
+
     if (blocks.length > 100) {
       errors.push(`Too many questions (${blocks.length} found). Maximum allowed is 100.`);
       return { questions: [], errors };
@@ -651,6 +656,7 @@
   const viewResults = document.getElementById('view-results');
 
   const timerDisplay = document.getElementById('timerDisplay');
+  const pauseBtn = document.getElementById('pauseBtn');
   const progressFill = document.getElementById('progressFill');
   const questionArea = document.getElementById('questionArea');
   const questionProgressLabel = document.getElementById('questionProgressLabel');
@@ -677,7 +683,8 @@
     answers: {},
     checked: {},
     timerInterval: null,
-    submitted: false
+    submitted: false,
+    paused: false
   };
 
   let quizHistory = [];
@@ -685,12 +692,14 @@
   // ================= ERROR DISPLAY =================
   function showErrors(errors) {
     let box = document.getElementById('errorBox');
+
     if (!box) {
       box = document.createElement('div');
       box.id = 'errorBox';
       box.style.cssText = "background:#2a1518;border:1px solid var(--danger);color:#ffb3b8;padding:14px;border-radius:10px;margin-top:16px;font-size:13px;line-height:1.6;";
       viewInput.appendChild(box);
     }
+
     box.innerHTML = '<b>Please fix the following before starting:</b><br>' + errors.map(e => `• ${e}`).join('<br>');
   }
 
@@ -704,16 +713,29 @@
     clearErrors();
 
     let rawText = questionsInput.value.trim();
+
     if (fileInput.files.length > 0) {
       rawText = (await fileInput.files[0].text()).trim();
     }
-    if (!rawText) { showErrors(["Please paste your questions or upload a .txt file."]); return; }
+
+    if (!rawText) {
+      showErrors(["Please paste your questions or upload a .txt file."]);
+      return;
+    }
 
     const minutes = parseInt(timerMinutesInput.value, 10);
-    if (!minutes || minutes <= 0) { showErrors(["Please enter a valid quiz duration in minutes."]); return; }
+
+    if (!minutes || minutes <= 0) {
+      showErrors(["Please enter a valid quiz duration in minutes."]);
+      return;
+    }
 
     const { questions, errors } = parseQuestions(rawText);
-    if (errors.length > 0) { showErrors(errors); return; }
+
+    if (errors.length > 0) {
+      showErrors(errors);
+      return;
+    }
 
     quizState = {
       questions,
@@ -723,15 +745,16 @@
       answers: {},
       checked: {},
       timerInterval: null,
-      submitted: false
+      submitted: false,
+      paused: false
     };
 
     viewInput.classList.add('hidden');
     viewResults.classList.add('hidden');
-    
+
     // Explicitly hide history section while quiz is active
     historyCard.classList.add('hidden');
-    
+
     viewQuiz.classList.remove('hidden');
 
     renderQuestion();
@@ -743,57 +766,97 @@
     const s = Math.max(0, totalSeconds);
     const m = Math.floor(s / 60);
     const sec = s % 60;
+
     return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
   }
 
   function updateTimerUI() {
     timerDisplay.textContent = formatTime(quizState.remainingSeconds);
-    const pct = Math.max(0, (quizState.remainingSeconds / quizState.totalSeconds) * 100);
+
+    const pct = Math.max(
+      0,
+      (quizState.remainingSeconds / quizState.totalSeconds) * 100
+    );
+
     progressFill.style.width = pct + '%';
 
     const critical = quizState.remainingSeconds <= 60;
+
     timerDisplay.classList.toggle('critical', critical);
     progressFill.classList.toggle('critical', critical);
   }
 
   function startTimer() {
     updateTimerUI();
+
+    pauseBtn.textContent = '⏸ Pause';
+    quizState.paused = false;
+
     quizState.timerInterval = setInterval(() => {
+
+      // Do not reduce the remaining time while the quiz is paused
+      if (quizState.paused) return;
+
       quizState.remainingSeconds--;
+
       updateTimerUI();
+
       if (quizState.remainingSeconds <= 0) {
         clearInterval(quizState.timerInterval);
         finalizeQuiz('auto');
       }
+
     }, 1000);
   }
+
+  // ================= PAUSE / RESUME =================
+  pauseBtn.addEventListener('click', () => {
+    if (quizState.submitted) return;
+
+    quizState.paused = !quizState.paused;
+
+    pauseBtn.textContent = quizState.paused
+      ? '▶ Resume'
+      : '⏸ Pause';
+  });
 
   // ================= QUESTION RENDERING =================
   function renderQuestion() {
     const q = quizState.questions[quizState.currentIndex];
     const locked = !!quizState.checked[q.number];
 
-    questionProgressLabel.textContent = `Question ${quizState.currentIndex + 1} of ${quizState.questions.length}`;
+    questionProgressLabel.textContent =
+      `Question ${quizState.currentIndex + 1} of ${quizState.questions.length}`;
 
-    let html = `<div style="font-size:17px; margin-bottom:16px;"><b>Q${quizState.currentIndex + 1}.</b> ${q.question}</div>`;
+    let html =
+      `<div style="font-size:17px; margin-bottom:16px;"><b>Q${quizState.currentIndex + 1}.</b> ${q.question}</div>`;
 
     if (q.type === 'MCQ') {
       const letters = ['A', 'B', 'C', 'D'];
+
       html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+
       q.options.forEach((opt, i) => {
         const letter = letters[i];
-        const isChecked = quizState.answers[q.number] === letter ? 'checked' : '';
+        const isChecked =
+          quizState.answers[q.number] === letter ? 'checked' : '';
+
         const disabledAttr = locked ? 'disabled' : '';
+
         html += `
           <label class="option-label ${locked ? 'locked' : ''}">
             <input type="radio" name="mcq-${q.number}" value="${letter}" ${isChecked} ${disabledAttr} onchange="onAnswerChanged(${q.number}, this.value)">
             <span>${letter}) ${opt}</span>
           </label>`;
       });
+
       html += '</div>';
+
     } else {
+
       const val = quizState.answers[q.number] || '';
       const disabledAttr = locked ? 'disabled' : '';
+
       html += `<input type="text" class="text-answer" id="textAnswer-${q.number}" value="${val}" placeholder="Type your answer..." ${disabledAttr} oninput="onAnswerChanged(${q.number}, this.value)">`;
     }
 
@@ -806,12 +869,16 @@
     checkBtn.classList.toggle('hidden', locked);
 
     prevBtn.disabled = quizState.currentIndex === 0;
-    const isLast = quizState.currentIndex === quizState.questions.length - 1;
+
+    const isLast =
+      quizState.currentIndex === quizState.questions.length - 1;
+
     nextBtn.classList.toggle('hidden', isLast);
     submitBtn.classList.toggle('hidden', !isLast);
 
     warningBox.innerHTML = '';
     feedbackBox.innerHTML = '';
+
     if (locked) {
       renderFeedback(q);
     }
@@ -826,23 +893,41 @@
     const q = quizState.questions[quizState.currentIndex];
     const userAnswer = quizState.answers[q.number];
 
-    if (userAnswer === undefined || userAnswer === null || userAnswer.toString().trim() === '') {
-      warningBox.innerHTML = '<div class="warning-banner">⚠️ Please select or enter an answer before checking.</div>';
+    if (
+      userAnswer === undefined ||
+      userAnswer === null ||
+      userAnswer.toString().trim() === ''
+    ) {
+      warningBox.innerHTML =
+        '<div class="warning-banner">⚠️ Please select or enter an answer before checking.</div>';
+
       return;
     }
 
     warningBox.innerHTML = '';
+
     quizState.checked[q.number] = true;
+
     renderQuestion();
   });
 
   function isAnswerCorrect(q) {
     const userAnswer = quizState.answers[q.number];
-    if (userAnswer === undefined || userAnswer === null || userAnswer.toString().trim() === '') return false;
+
+    if (
+      userAnswer === undefined ||
+      userAnswer === null ||
+      userAnswer.toString().trim() === ''
+    ) {
+      return false;
+    }
+
     if (q.type === 'MCQ') {
       return userAnswer === q.answer;
     }
-    return userAnswer.toString().trim().toLowerCase() === q.answer.trim().toLowerCase();
+
+    return userAnswer.toString().trim().toLowerCase() ===
+           q.answer.trim().toLowerCase();
   }
 
   function renderFeedback(q) {
@@ -852,25 +937,44 @@
     let html = '';
 
     if (correct) {
+
       html += `<div class="feedback-banner correct"><b class="title">✅ Correct!</b>`;
+
       if (q.explanation) {
         html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
       }
+
       html += `</div>`;
+
     } else {
+
       html += `<div class="feedback-banner incorrect"><b class="title">❌ Incorrect.</b>`;
 
       if (q.type === 'MCQ') {
+
         const letters = ['A', 'B', 'C', 'D'];
+
         q.options.forEach((opt, i) => {
           const letter = letters[i];
+
           let rowClass = 'feedback-option-row';
           let tag = '';
-          if (letter === q.answer) { rowClass += ' is-correct'; tag = ' <b>← Correct Answer</b>'; }
-          if (letter === userAnswer && letter !== q.answer) { rowClass += ' is-wrong-pick'; tag = ' <b>← Your Answer</b>'; }
+
+          if (letter === q.answer) {
+            rowClass += ' is-correct';
+            tag = ' <b>← Correct Answer</b>';
+          }
+
+          if (letter === userAnswer && letter !== q.answer) {
+            rowClass += ' is-wrong-pick';
+            tag = ' <b>← Your Answer</b>';
+          }
+
           html += `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
         });
+
       } else {
+
         html += `<div class="feedback-option-row is-wrong-pick">Your answer: <b>${userAnswer}</b></div>`;
         html += `<div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>`;
       }
@@ -878,6 +982,7 @@
       if (q.explanation) {
         html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
       }
+
       html += `</div>`;
     }
 
@@ -906,7 +1011,11 @@
   });
 
   quitBtn.addEventListener('click', () => {
-    if (confirm("Are you sure you want to quit this quiz session? Your answers up to this point will be graded.")) {
+    if (
+      confirm(
+        "Are you sure you want to quit this quiz session? Your answers up to this point will be graded."
+      )
+    ) {
       clearInterval(quizState.timerInterval);
       finalizeQuiz('quit');
     }
@@ -915,91 +1024,162 @@
   // ================= RESULTS =================
   function finalizeQuiz(mode = 'manual') {
     if (quizState.submitted) return;
+
     quizState.submitted = true;
+    quizState.paused = false;
+
     clearInterval(quizState.timerInterval);
 
-    let correctCount = 0, wrongCount = 0, skippedCount = 0;
+    let correctCount = 0,
+        wrongCount = 0,
+        skippedCount = 0;
+
     quizState.questions.forEach(q => {
       const userAnswer = quizState.answers[q.number];
-      const wasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer.toString().trim() !== '';
-      if (!wasAnswered) { skippedCount++; return; }
-      if (isAnswerCorrect(q)) correctCount++; else wrongCount++;
+
+      const wasAnswered =
+        userAnswer !== undefined &&
+        userAnswer !== null &&
+        userAnswer.toString().trim() !== '';
+
+      if (!wasAnswered) {
+        skippedCount++;
+        return;
+      }
+
+      if (isAnswerCorrect(q)) correctCount++;
+      else wrongCount++;
     });
 
     const total = quizState.questions.length;
-    const pct = total > 0 ? Math.round((correctCount / total) * 1000) / 10 : 0;
-    const scoreClass = pct >= 80 ? 'good' : (pct >= 50 ? 'mid' : 'bad');
-    
-    let statusHtml = `<span class="status-pill manual">✅ SUBMITTED</span>`;
+
+    const pct =
+      total > 0
+        ? Math.round((correctCount / total) * 1000) / 10
+        : 0;
+
+    const scoreClass =
+      pct >= 80 ? 'good' :
+      (pct >= 50 ? 'mid' : 'bad');
+
+    let statusHtml =
+      `<span class="status-pill manual">✅ SUBMITTED</span>`;
+
     let modeText = 'Submitted';
 
     if (mode === 'auto') {
-      statusHtml = `<span class="status-pill auto">⏰ TIME EXPIRED — AUTO-SUBMITTED</span>`;
+      statusHtml =
+        `<span class="status-pill auto">⏰ TIME EXPIRED — AUTO-SUBMITTED</span>`;
+
       modeText = 'Auto-submitted (time expired)';
+
     } else if (mode === 'quit') {
-      statusHtml = `<span class="status-pill quit">🚪 QUIETED EARLY</span>`;
+
+      statusHtml =
+        `<span class="status-pill quit">🚪 QUIETED EARLY</span>`;
+
       modeText = 'Quit early';
     }
 
     resultsSummary.innerHTML = `
       <h2>📊 Quiz Results</h2>
       ${statusHtml}
+
       <div class="stat-row">
+
         <div class="stat-block">
           <div class="stat-label">Score</div>
           <div class="stat-value ${scoreClass}">${correctCount} / ${total}</div>
         </div>
+
         <div class="stat-block">
           <div class="stat-label">Percentage</div>
           <div class="stat-value ${scoreClass}">${pct}%</div>
         </div>
+
         <div class="stat-block">
           <div class="stat-label">Correct</div>
           <div class="stat-value good">${correctCount}</div>
         </div>
+
         <div class="stat-block">
           <div class="stat-label">Incorrect</div>
           <div class="stat-value bad">${wrongCount}</div>
         </div>
+
         <div class="stat-block">
           <div class="stat-label">Skipped</div>
           <div class="stat-value">${skippedCount}</div>
         </div>
+
         <div class="stat-block">
           <div class="stat-label">Time Left at End</div>
           <div class="stat-value" style="font-size:18px;">${formatTime(quizState.remainingSeconds)}</div>
         </div>
+
       </div>
     `;
 
     let breakdownHtml = '';
+
     quizState.questions.forEach(q => {
       const userAnswer = quizState.answers[q.number];
-      const wasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer.toString().trim() !== '';
-      let badgeHtml, resultLine;
+
+      const wasAnswered =
+        userAnswer !== undefined &&
+        userAnswer !== null &&
+        userAnswer.toString().trim() !== '';
+
+      let badgeHtml,
+          resultLine;
 
       if (!wasAnswered) {
+
         badgeHtml = '<span class="badge skip">SKIPPED</span>';
+
       } else if (isAnswerCorrect(q)) {
+
         badgeHtml = '<span class="badge pass">CORRECT</span>';
+
       } else {
+
         badgeHtml = '<span class="badge fail">INCORRECT</span>';
       }
 
       if (q.type === 'MCQ') {
+
         const letters = ['A', 'B', 'C', 'D'];
+
         resultLine = '<div style="margin:10px 0;">';
+
         q.options.forEach((opt, i) => {
           const letter = letters[i];
+
           let rowClass = 'feedback-option-row';
           let tag = '';
-          if (letter === q.answer) { rowClass += ' is-correct'; tag = ' <b>(Correct Answer)</b>'; }
-          if (letter === userAnswer && letter !== q.answer) { rowClass += ' is-wrong-pick'; tag = ' <b>(Your Answer)</b>'; }
-          else if (letter === userAnswer && letter === q.answer) { tag += ' <b>(Your Answer ✓)</b>'; }
-          resultLine += `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
+
+          if (letter === q.answer) {
+            rowClass += ' is-correct';
+            tag = ' <b>(Correct Answer)</b>';
+          }
+
+          if (letter === userAnswer && letter !== q.answer) {
+            rowClass += ' is-wrong-pick';
+            tag = ' <b>(Your Answer)</b>';
+          }
+
+          else if (letter === userAnswer && letter === q.answer) {
+            tag += ' <b>(Your Answer ✓)</b>';
+          }
+
+          resultLine +=
+            `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
         });
+
         resultLine += '</div>';
+
       } else {
+
         resultLine = `<div style="margin:10px 0;">
           <div class="feedback-option-row">Your answer: <b>${wasAnswered ? userAnswer : '(no answer given)'}</b></div>
           <div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>
@@ -1008,12 +1188,19 @@
 
       breakdownHtml += `
         <div class="breakdown-card">
+
           <div class="breakdown-card-header">
             <div><b>Q${q.number}.</b> ${q.question}</div>
             ${badgeHtml}
           </div>
+
           ${resultLine}
-          ${q.explanation ? `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>` : ''}
+
+          ${q.explanation
+            ? `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`
+            : ''
+          }
+
         </div>
       `;
     });
@@ -1021,7 +1208,13 @@
     resultsBreakdown.innerHTML = breakdownHtml;
 
     const attemptNumber = quizHistory.length + 1;
-    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const timeLabel =
+      new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
     quizHistory.push({
       label: `Attempt ${attemptNumber} — ${correctCount}/${total} (${pct}%)`,
       meta: `${timeLabel} • ${modeText}`,
@@ -1031,63 +1224,96 @@
 
     viewQuiz.classList.add('hidden');
     viewResults.classList.remove('hidden');
-    
+
     // Show history card again after submission
     renderHistoryList();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 
   // ================= HISTORY LIST =================
   function renderHistoryList() {
+
     // Only render if there's history AND a quiz is not actively running
-    if (quizHistory.length === 0 || !viewQuiz.classList.contains('hidden')) {
+    if (
+      quizHistory.length === 0 ||
+      !viewQuiz.classList.contains('hidden')
+    ) {
       historyCard.classList.add('hidden');
       return;
     }
+
     historyCard.classList.remove('hidden');
+
     historyList.innerHTML = quizHistory.map((entry, idx) => `
       <div class="history-row">
+
         <div>
           <span class="history-label">${entry.label}</span>
           <span class="history-meta">${entry.meta}</span>
         </div>
-        <button class="view-history-btn secondary" onclick="viewHistoryEntry(${idx})">View</button>
+
+        <button
+          class="view-history-btn secondary"
+          onclick="viewHistoryEntry(${idx})"
+        >
+          View
+        </button>
+
       </div>
     `).join('');
   }
 
   function viewHistoryEntry(idx) {
     const entry = quizHistory[idx];
+
     if (!entry) return;
+
     resultsSummary.innerHTML = entry.summaryHTML;
     resultsBreakdown.innerHTML = entry.breakdownHTML;
 
     viewInput.classList.add('hidden');
     viewQuiz.classList.add('hidden');
     viewResults.classList.remove('hidden');
-    
+
     renderHistoryList();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   }
 
   newQuizBtn.addEventListener('click', () => {
+
     clearInterval(quizState.timerInterval);
+
     viewResults.classList.add('hidden');
     viewQuiz.classList.add('hidden');
     viewInput.classList.remove('hidden');
+
     renderHistoryList();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   });
 
   retakeQuizBtn.addEventListener('click', () => {
+
     clearInterval(quizState.timerInterval);
-    
+
     // Reset attempt state keeping the same questions
     quizState.remainingSeconds = quizState.totalSeconds;
     quizState.currentIndex = 0;
     quizState.answers = {};
     quizState.checked = {};
     quizState.submitted = false;
+    quizState.paused = false;
 
     viewResults.classList.add('hidden');
     historyCard.classList.add('hidden');
@@ -1095,8 +1321,13 @@
 
     renderQuestion();
     startTimer();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   });
 </script>
+
 </body>
 </html>
