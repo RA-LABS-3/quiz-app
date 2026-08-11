@@ -1,2 +1,2 @@
 # Quiz-app
-RA Labs interactive quiz app.
+RA LABS interactive quiz app.
