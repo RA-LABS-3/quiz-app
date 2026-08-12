@@ -210,6 +210,80 @@
     margin-left: 10px;
   }
 
+  .paused-overlay {
+    text-align: center;
+    padding: 64px 24px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(124,92,255,0.10), rgba(79,209,197,0.06));
+  }
+
+  .paused-overlay .pause-icon {
+    font-size: 46px;
+    margin-bottom: 14px;
+    animation: pulse 1.6s infinite;
+  }
+
+  .paused-overlay h3 {
+    margin: 0 0 8px 0;
+    font-size: 22px;
+    color: var(--text);
+  }
+
+  .paused-overlay p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  /* ---- Quit confirmation modal ---- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 9, 13, 0.7);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+
+  .modal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  }
+
+  .modal-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal-card p {
+    margin: 0 0 22px 0;
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  button.modal-quit-confirm {
+    background: linear-gradient(135deg, var(--danger), #c9414a);
+  }
+
   .history-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -557,17 +631,25 @@
         <div id="progressFill" class="progress-fill" style="width:100%;"></div>
       </div>
 
-      <div id="questionArea"></div>
+      <div id="quizBody">
+        <div id="questionArea"></div>
 
-      <button id="checkBtn" class="check-btn">✅ Check Answer</button>
-      <div id="warningBox"></div>
-      <div id="feedbackBox"></div>
+        <button id="checkBtn" class="check-btn">✅ Check Answer</button>
+        <div id="warningBox"></div>
+        <div id="feedbackBox"></div>
 
-      <div class="row" style="justify-content: space-between; margin-top:24px;">
-        <button id="prevBtn" class="secondary">⬅ Previous</button>
-        <button id="quitBtn" class="quit-btn">🚪 Quit Quiz</button>
-        <button id="nextBtn">Next ➡</button>
-        <button id="submitBtn" class="submit-btn hidden">🏁 Submit Quiz</button>
+        <div class="row" style="justify-content: space-between; margin-top:24px;">
+          <button id="prevBtn" class="secondary">⬅ Previous</button>
+          <button id="quitBtn" class="quit-btn">🚪 Quit Quiz</button>
+          <button id="nextBtn">Next ➡</button>
+          <button id="submitBtn" class="submit-btn hidden">🏁 Submit Quiz</button>
+        </div>
+      </div>
+
+      <div id="pausedOverlay" class="paused-overlay hidden">
+        <div class="pause-icon">⏸️</div>
+        <h3>Quiz Paused</h3>
+        <p>Your timer is on hold and the question is hidden. Click <b>Resume</b> above to continue where you left off.</p>
       </div>
     </section>
 
@@ -586,6 +668,18 @@
     </section>
 
   </main>
+
+  <!-- Quit confirmation modal (replaces the native browser confirm()) -->
+  <div id="quitModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <h3>🚪 Quit this quiz?</h3>
+      <p>Your progress so far will be graded and saved to your results — you won't be able to return to unanswered questions afterward.</p>
+      <div class="modal-actions">
+        <button id="cancelQuitBtn" class="secondary">Keep Going</button>
+        <button id="confirmQuitBtn" class="modal-quit-confirm">Quit &amp; Submit</button>
+      </div>
+    </div>
+  </div>
 
   <footer>Built by RA Labs</footer>
 
@@ -673,6 +767,11 @@
   const retakeQuizBtn = document.getElementById('retakeQuizBtn');
   const historyCard = document.getElementById('historyCard');
   const historyList = document.getElementById('historyList');
+  const quizBody = document.getElementById('quizBody');
+  const pausedOverlay = document.getElementById('pausedOverlay');
+  const quitModal = document.getElementById('quitModal');
+  const cancelQuitBtn = document.getElementById('cancelQuitBtn');
+  const confirmQuitBtn = document.getElementById('confirmQuitBtn');
 
   // ================= STATE =================
   let quizState = {
@@ -818,7 +917,14 @@
     pauseBtn.textContent = quizState.paused
       ? '▶ Resume'
       : '⏸ Pause';
+
+    updatePauseVisibility();
   });
+
+  function updatePauseVisibility() {
+    quizBody.classList.toggle('hidden', quizState.paused);
+    pausedOverlay.classList.toggle('hidden', !quizState.paused);
+  }
 
   // ================= QUESTION RENDERING =================
   function renderQuestion() {
@@ -1011,14 +1117,17 @@
   });
 
   quitBtn.addEventListener('click', () => {
-    if (
-      confirm(
-        "Are you sure you want to quit this quiz session? Your answers up to this point will be graded."
-      )
-    ) {
-      clearInterval(quizState.timerInterval);
-      finalizeQuiz('quit');
-    }
+    quitModal.classList.remove('hidden');
+  });
+
+  cancelQuitBtn.addEventListener('click', () => {
+    quitModal.classList.add('hidden');
+  });
+
+  confirmQuitBtn.addEventListener('click', () => {
+    quitModal.classList.add('hidden');
+    clearInterval(quizState.timerInterval);
+    finalizeQuiz('quit');
   });
 
   // ================= RESULTS =================
