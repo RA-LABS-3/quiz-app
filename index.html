@@ -284,6 +284,141 @@
     background: linear-gradient(135deg, var(--danger), #c9414a);
   }
 
+  /* ---- Jump-to-question navigation ---- */
+  .q-nav-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: -12px 0 20px 0;
+  }
+
+  button.q-nav-toggle-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  button.q-nav-toggle-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .q-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 9, 13, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 1100;
+    display: flex;
+    justify-content: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .q-nav-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .q-nav-panel {
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    width: 340px;
+    max-width: 85%;
+    height: 100%;
+    padding: 24px;
+    overflow-y: auto;
+    box-shadow: -10px 0 40px rgba(0,0,0,0.4);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .q-nav-backdrop.open .q-nav-panel {
+    transform: translateX(0);
+  }
+
+  .q-nav-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .q-nav-panel-header h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+
+  .q-nav-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 14px 0 18px 0;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .q-nav-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .q-nav-legend .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .q-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+
+  .q-nav-btn {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .q-nav-btn:hover {
+    border-color: var(--accent);
+  }
+
+  .q-nav-btn.current {
+    background: linear-gradient(135deg, var(--accent), #6a4bff);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .q-nav-btn.answered {
+    border-color: var(--accent-2);
+    color: var(--accent-2);
+  }
+
+  .q-nav-btn.locked {
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  .q-nav-btn.current.locked,
+  .q-nav-btn.current.answered {
+    color: #fff;
+  }
+
   .history-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -631,6 +766,10 @@
         <div id="progressFill" class="progress-fill" style="width:100%;"></div>
       </div>
 
+      <div class="q-nav-toggle-row">
+        <button id="navToggleBtn" class="q-nav-toggle-btn">🔢 Jump to Question</button>
+      </div>
+
       <div id="quizBody">
         <div id="questionArea"></div>
 
@@ -678,6 +817,22 @@
         <button id="cancelQuitBtn" class="secondary">Keep Going</button>
         <button id="confirmQuitBtn" class="modal-quit-confirm">Quit &amp; Submit</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Jump-to-question sliding panel -->
+  <div id="questionNavBackdrop" class="q-nav-backdrop">
+    <div class="q-nav-panel">
+      <div class="q-nav-panel-header">
+        <h3>Jump to Question</h3>
+        <button id="closeNavBtn" class="secondary">✕ Close</button>
+      </div>
+      <div class="q-nav-legend">
+        <span><span class="swatch" style="background:var(--accent);"></span> Current</span>
+        <span><span class="swatch" style="background:var(--surface-2); border:1px solid var(--accent-2);"></span> Answered</span>
+        <span><span class="swatch" style="background:var(--surface-2); border:1px solid var(--success);"></span> Locked</span>
+      </div>
+      <div id="questionNavGrid" class="q-nav-grid"></div>
     </div>
   </div>
 
@@ -772,6 +927,10 @@
   const quitModal = document.getElementById('quitModal');
   const cancelQuitBtn = document.getElementById('cancelQuitBtn');
   const confirmQuitBtn = document.getElementById('confirmQuitBtn');
+  const navToggleBtn = document.getElementById('navToggleBtn');
+  const questionNavBackdrop = document.getElementById('questionNavBackdrop');
+  const closeNavBtn = document.getElementById('closeNavBtn');
+  const questionNavGrid = document.getElementById('questionNavGrid');
 
   // ================= STATE =================
   let quizState = {
@@ -924,6 +1083,7 @@
   function updatePauseVisibility() {
     quizBody.classList.toggle('hidden', quizState.paused);
     pausedOverlay.classList.toggle('hidden', !quizState.paused);
+    navToggleBtn.disabled = quizState.paused;
   }
 
   // ================= QUESTION RENDERING =================
@@ -1109,6 +1269,45 @@
       renderQuestion();
     }
   });
+
+  // ================= JUMP TO QUESTION =================
+  navToggleBtn.addEventListener('click', () => {
+    renderQuestionNavGrid();
+    questionNavBackdrop.classList.add('open');
+  });
+
+  closeNavBtn.addEventListener('click', () => {
+    questionNavBackdrop.classList.remove('open');
+  });
+
+  // Clicking the dimmed backdrop (outside the panel) also closes it
+  questionNavBackdrop.addEventListener('click', (e) => {
+    if (e.target === questionNavBackdrop) {
+      questionNavBackdrop.classList.remove('open');
+    }
+  });
+
+  function renderQuestionNavGrid() {
+    questionNavGrid.innerHTML = quizState.questions.map((q, idx) => {
+      let classes = 'q-nav-btn';
+
+      if (idx === quizState.currentIndex) classes += ' current';
+      if (quizState.checked[q.number]) classes += ' locked';
+      else if (
+        quizState.answers[q.number] !== undefined &&
+        quizState.answers[q.number] !== null &&
+        quizState.answers[q.number].toString().trim() !== ''
+      ) classes += ' answered';
+
+      return `<button class="${classes}" onclick="jumpToQuestion(${idx})">${q.number}</button>`;
+    }).join('');
+  }
+
+  function jumpToQuestion(idx) {
+    quizState.currentIndex = idx;
+    questionNavBackdrop.classList.remove('open');
+    renderQuestion();
+  }
 
   // ================= SUBMIT & QUIT =================
   submitBtn.addEventListener('click', () => {
