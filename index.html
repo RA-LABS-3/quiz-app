@@ -307,8 +307,8 @@
   .q-nav-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(8, 9, 13, 0.6);
-    backdrop-filter: blur(3px);
+    background: transparent;
+    backdrop-filter: none;
     z-index: 1100;
     display: flex;
     justify-content: flex-end;
@@ -319,7 +319,7 @@
 
   .q-nav-backdrop.open {
     opacity: 1;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .q-nav-panel {
@@ -331,6 +331,7 @@
     padding: 24px;
     overflow-y: auto;
     box-shadow: -10px 0 40px rgba(0,0,0,0.4);
+    pointer-events: auto;
     transform: translateX(100%);
     transition: transform 0.3s ease;
   }
@@ -410,12 +411,28 @@
   }
 
   .q-nav-btn.locked {
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  /* Correctly answered question */
+  .q-nav-btn.correct {
+    background: rgba(61, 220, 132, 0.18);
     border-color: var(--success);
     color: var(--success);
   }
 
+  /* Incorrectly answered question */
+  .q-nav-btn.incorrect {
+    background: rgba(255, 92, 102, 0.18);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
   .q-nav-btn.current.locked,
-  .q-nav-btn.current.answered {
+  .q-nav-btn.current.answered,
+  .q-nav-btn.current.correct,
+  .q-nav-btn.current.incorrect {
     color: #fff;
   }
 
@@ -672,9 +689,23 @@
     margin-top: 4px;
   }
 
-  .status-pill.auto { background: rgba(255,179,71,0.15); color: var(--warning); border: 1px solid var(--warning); }
-  .status-pill.manual { background: rgba(61,220,132,0.15); color: var(--success); border: 1px solid var(--success); }
-  .status-pill.quit { background: rgba(255,92,102,0.15); color: var(--danger); border: 1px solid var(--danger); }
+  .status-pill.auto {
+    background: rgba(255,179,71,0.15);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+  }
+
+  .status-pill.manual {
+    background: rgba(61,220,132,0.15);
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+
+  .status-pill.quit {
+    background: rgba(255,92,102,0.15);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
 
   .breakdown-card {
     background: var(--surface);
@@ -701,9 +732,20 @@
     letter-spacing: 0.4px;
   }
 
-  .badge.pass { background: var(--success); color: #0a2a17; }
-  .badge.fail { background: var(--danger); color: #2a0a0d; }
-  .badge.skip { background: var(--skip); color: #f2f2f2; }
+  .badge.pass {
+    background: var(--success);
+    color: #0a2a17;
+  }
+
+  .badge.fail {
+    background: var(--danger);
+    color: #2a0a0d;
+  }
+
+  .badge.skip {
+    background: var(--skip);
+    color: #f2f2f2;
+  }
 
   #newQuizBtn {
     margin-top: 10px;
@@ -717,6 +759,7 @@
   }
 </style>
 </head>
+
 <body>
 
   <header>
@@ -800,7 +843,7 @@
       <button id="retakeQuizBtn" class="retake-btn">🔁 Retake This Quiz</button>
     </section>
 
-    <!-- Previous attempts: only visible on configuration screen or results screen -->
+    <!-- Previous attempts -->
     <section id="historyCard" class="history-card hidden">
       <h2>📜 Previous Attempts (this session)</h2>
       <div id="historyList"></div>
@@ -808,7 +851,7 @@
 
   </main>
 
-  <!-- Quit confirmation modal (replaces the native browser confirm()) -->
+  <!-- Quit confirmation modal -->
   <div id="quitModal" class="modal-backdrop hidden">
     <div class="modal-card">
       <h3>🚪 Quit this quiz?</h3>
@@ -827,11 +870,24 @@
         <h3>Jump to Question</h3>
         <button id="closeNavBtn" class="secondary">✕ Close</button>
       </div>
+
       <div class="q-nav-legend">
-        <span><span class="swatch" style="background:var(--accent);"></span> Current</span>
-        <span><span class="swatch" style="background:var(--surface-2); border:1px solid var(--accent-2);"></span> Answered</span>
-        <span><span class="swatch" style="background:var(--surface-2); border:1px solid var(--success);"></span> Locked</span>
+        <span>
+          <span class="swatch" style="background:var(--accent);"></span>
+          Current
+        </span>
+
+        <span>
+          <span class="swatch" style="background:var(--success);"></span>
+          Correct
+        </span>
+
+        <span>
+          <span class="swatch" style="background:var(--danger);"></span>
+          Incorrect
+        </span>
       </div>
+
       <div id="questionNavGrid" class="q-nav-grid"></div>
     </div>
   </div>
@@ -842,7 +898,10 @@
   // ================= PARSER =================
   function parseQuestions(rawText) {
     const errors = [];
-    const blocks = rawText.split(/\n\s*---\s*\n?/).map(b => b.trim()).filter(b => b.length > 0);
+    const blocks = rawText
+      .split(/\n\s*---\s*\n?/)
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
 
     if (blocks.length === 0) {
       errors.push("No questions found. Make sure each question block is separated by a line containing only ---");
@@ -858,42 +917,92 @@
 
     blocks.forEach((block, idx) => {
       const qNum = idx + 1;
-      const lines = block.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const lines = block
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
 
-      let type = null, question = null, answer = null, explanation = null;
+      let type = null,
+          question = null,
+          answer = null,
+          explanation = null;
+
       const options = {};
 
       for (const line of lines) {
-        if (/^TYPE:/i.test(line)) type = line.replace(/^TYPE:/i, '').trim().toUpperCase();
-        else if (/^Q:/i.test(line)) question = line.replace(/^Q:/i, '').trim();
-        else if (/^[A-D]\)/.test(line)) options[line[0].toUpperCase()] = line.slice(2).trim();
-        else if (/^ANSWER:/i.test(line)) answer = line.replace(/^ANSWER:/i, '').trim();
-        else if (/^EXPLANATION:/i.test(line)) explanation = line.replace(/^EXPLANATION:/i, '').trim();
+        if (/^TYPE:/i.test(line))
+          type = line.replace(/^TYPE:/i, '').trim().toUpperCase();
+
+        else if (/^Q:/i.test(line))
+          question = line.replace(/^Q:/i, '').trim();
+
+        else if (/^[A-D]\)/.test(line))
+          options[line[0].toUpperCase()] = line.slice(2).trim();
+
+        else if (/^ANSWER:/i.test(line))
+          answer = line.replace(/^ANSWER:/i, '').trim();
+
+        else if (/^EXPLANATION:/i.test(line))
+          explanation = line.replace(/^EXPLANATION:/i, '').trim();
       }
 
-      if (!type) { errors.push(`Error in Question ${qNum}: Missing TYPE.`); return; }
-      if (!['MCQ', 'SHORT', 'FILL'].includes(type)) { errors.push(`Error in Question ${qNum}: TYPE must be MCQ, SHORT, or FILL.`); return; }
-      if (!question) { errors.push(`Error in Question ${qNum}: Missing question text (Q:).`); return; }
-      if (!answer) { errors.push(`Error in Question ${qNum}: Missing ANSWER.`); return; }
+      if (!type) {
+        errors.push(`Error in Question ${qNum}: Missing TYPE.`);
+        return;
+      }
+
+      if (!['MCQ', 'SHORT', 'FILL'].includes(type)) {
+        errors.push(`Error in Question ${qNum}: TYPE must be MCQ, SHORT, or FILL.`);
+        return;
+      }
+
+      if (!question) {
+        errors.push(`Error in Question ${qNum}: Missing question text (Q:).`);
+        return;
+      }
+
+      if (!answer) {
+        errors.push(`Error in Question ${qNum}: Missing ANSWER.`);
+        return;
+      }
 
       if (type === 'MCQ') {
-        const hasAllFour = ['A', 'B', 'C', 'D'].every(letter => options[letter]);
-        if (!hasAllFour) { errors.push(`Error in Question ${qNum}: MCQ requires exactly 4 options (A, B, C, D).`); return; }
-        if (!['A', 'B', 'C', 'D'].includes(answer.toUpperCase())) { errors.push(`Error in Question ${qNum}: ANSWER must be a single letter A-D for MCQ.`); return; }
+        const hasAllFour =
+          ['A', 'B', 'C', 'D'].every(letter => options[letter]);
+
+        if (!hasAllFour) {
+          errors.push(`Error in Question ${qNum}: MCQ requires exactly 4 options (A, B, C, D).`);
+          return;
+        }
+
+        if (!['A', 'B', 'C', 'D'].includes(answer.toUpperCase())) {
+          errors.push(`Error in Question ${qNum}: ANSWER must be a single letter A-D for MCQ.`);
+          return;
+        }
 
         questions.push({
-          number: qNum, type, question,
+          number: qNum,
+          type,
+          question,
           options: [options.A, options.B, options.C, options.D],
           answer: answer.toUpperCase(),
           explanation: explanation || ""
         });
+
       } else {
-        questions.push({ number: qNum, type, question, answer, explanation: explanation || "" });
+        questions.push({
+          number: qNum,
+          type,
+          question,
+          answer,
+          explanation: explanation || ""
+        });
       }
     });
 
     return { questions, errors };
   }
+
 
   // ================= DOM REFS =================
   const startBtn = document.getElementById('startBtn');
@@ -932,6 +1041,7 @@
   const closeNavBtn = document.getElementById('closeNavBtn');
   const questionNavGrid = document.getElementById('questionNavGrid');
 
+
   // ================= STATE =================
   let quizState = {
     questions: [],
@@ -947,6 +1057,7 @@
 
   let quizHistory = [];
 
+
   // ================= ERROR DISPLAY =================
   function showErrors(errors) {
     let box = document.getElementById('errorBox');
@@ -954,17 +1065,23 @@
     if (!box) {
       box = document.createElement('div');
       box.id = 'errorBox';
-      box.style.cssText = "background:#2a1518;border:1px solid var(--danger);color:#ffb3b8;padding:14px;border-radius:10px;margin-top:16px;font-size:13px;line-height:1.6;";
+
+      box.style.cssText =
+        "background:#2a1518;border:1px solid var(--danger);color:#ffb3b8;padding:14px;border-radius:10px;margin-top:16px;font-size:13px;line-height:1.6;";
+
       viewInput.appendChild(box);
     }
 
-    box.innerHTML = '<b>Please fix the following before starting:</b><br>' + errors.map(e => `• ${e}`).join('<br>');
+    box.innerHTML =
+      '<b>Please fix the following before starting:</b><br>' +
+      errors.map(e => `• ${e}`).join('<br>');
   }
 
   function clearErrors() {
     const box = document.getElementById('errorBox');
     if (box) box.remove();
   }
+
 
   // ================= START QUIZ =================
   startBtn.addEventListener('click', async () => {
@@ -1010,7 +1127,6 @@
     viewInput.classList.add('hidden');
     viewResults.classList.add('hidden');
 
-    // Explicitly hide history section while quiz is active
     historyCard.classList.add('hidden');
 
     viewQuiz.classList.remove('hidden');
@@ -1019,17 +1135,20 @@
     startTimer();
   });
 
+
   // ================= TIMER =================
   function formatTime(totalSeconds) {
     const s = Math.max(0, totalSeconds);
     const m = Math.floor(s / 60);
     const sec = s % 60;
 
-    return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+    return String(m).padStart(2, '0') + ':' +
+           String(sec).padStart(2, '0');
   }
 
   function updateTimerUI() {
-    timerDisplay.textContent = formatTime(quizState.remainingSeconds);
+    timerDisplay.textContent =
+      formatTime(quizState.remainingSeconds);
 
     const pct = Math.max(
       0,
@@ -1052,7 +1171,6 @@
 
     quizState.timerInterval = setInterval(() => {
 
-      // Do not reduce the remaining time while the quiz is paused
       if (quizState.paused) return;
 
       quizState.remainingSeconds--;
@@ -1066,6 +1184,7 @@
 
     }, 1000);
   }
+
 
   // ================= PAUSE / RESUME =================
   pauseBtn.addEventListener('click', () => {
@@ -1086,6 +1205,7 @@
     navToggleBtn.disabled = quizState.paused;
   }
 
+
   // ================= QUESTION RENDERING =================
   function renderQuestion() {
     const q = quizState.questions[quizState.currentIndex];
@@ -1100,18 +1220,30 @@
     if (q.type === 'MCQ') {
       const letters = ['A', 'B', 'C', 'D'];
 
-      html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+      html +=
+        '<div style="display:flex; flex-direction:column; gap:10px;">';
 
       q.options.forEach((opt, i) => {
         const letter = letters[i];
-        const isChecked =
-          quizState.answers[q.number] === letter ? 'checked' : '';
 
-        const disabledAttr = locked ? 'disabled' : '';
+        const isChecked =
+          quizState.answers[q.number] === letter
+            ? 'checked'
+            : '';
+
+        const disabledAttr =
+          locked ? 'disabled' : '';
 
         html += `
           <label class="option-label ${locked ? 'locked' : ''}">
-            <input type="radio" name="mcq-${q.number}" value="${letter}" ${isChecked} ${disabledAttr} onchange="onAnswerChanged(${q.number}, this.value)">
+            <input
+              type="radio"
+              name="mcq-${q.number}"
+              value="${letter}"
+              ${isChecked}
+              ${disabledAttr}
+              onchange="onAnswerChanged(${q.number}, this.value)"
+            >
             <span>${letter}) ${opt}</span>
           </label>`;
       });
@@ -1120,21 +1252,35 @@
 
     } else {
 
-      const val = quizState.answers[q.number] || '';
-      const disabledAttr = locked ? 'disabled' : '';
+      const val =
+        quizState.answers[q.number] || '';
 
-      html += `<input type="text" class="text-answer" id="textAnswer-${q.number}" value="${val}" placeholder="Type your answer..." ${disabledAttr} oninput="onAnswerChanged(${q.number}, this.value)">`;
+      const disabledAttr =
+        locked ? 'disabled' : '';
+
+      html += `
+        <input
+          type="text"
+          class="text-answer"
+          id="textAnswer-${q.number}"
+          value="${val}"
+          placeholder="Type your answer..."
+          ${disabledAttr}
+          oninput="onAnswerChanged(${q.number}, this.value)"
+        >`;
     }
 
     if (locked) {
-      html += `<div class="lock-note">🔒 Answer locked — this question has already been checked.</div>`;
+      html +=
+        `<div class="lock-note">🔒 Answer locked — this question has already been checked.</div>`;
     }
 
     questionArea.innerHTML = html;
 
     checkBtn.classList.toggle('hidden', locked);
 
-    prevBtn.disabled = quizState.currentIndex === 0;
+    prevBtn.disabled =
+      quizState.currentIndex === 0;
 
     const isLast =
       quizState.currentIndex === quizState.questions.length - 1;
@@ -1154,10 +1300,14 @@
     quizState.answers[qNumber] = value;
   }
 
+
   // ================= CHECK ANSWER =================
   checkBtn.addEventListener('click', () => {
-    const q = quizState.questions[quizState.currentIndex];
-    const userAnswer = quizState.answers[q.number];
+    const q =
+      quizState.questions[quizState.currentIndex];
+
+    const userAnswer =
+      quizState.answers[q.number];
 
     if (
       userAnswer === undefined ||
@@ -1175,10 +1325,21 @@
     quizState.checked[q.number] = true;
 
     renderQuestion();
+
+    /*
+      Keep the question navigator updated while it is open.
+      This allows the button color to immediately change
+      to green or red after checking an answer.
+    */
+    if (questionNavBackdrop.classList.contains('open')) {
+      renderQuestionNavGrid();
+    }
   });
 
+
   function isAnswerCorrect(q) {
-    const userAnswer = quizState.answers[q.number];
+    const userAnswer =
+      quizState.answers[q.number];
 
     if (
       userAnswer === undefined ||
@@ -1196,6 +1357,7 @@
            q.answer.trim().toLowerCase();
   }
 
+
   function renderFeedback(q) {
     const correct = isAnswerCorrect(q);
     const userAnswer = quizState.answers[q.number];
@@ -1204,17 +1366,20 @@
 
     if (correct) {
 
-      html += `<div class="feedback-banner correct"><b class="title">✅ Correct!</b>`;
+      html +=
+        `<div class="feedback-banner correct"><b class="title">✅ Correct!</b>`;
 
       if (q.explanation) {
-        html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
+        html +=
+          `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
       }
 
       html += `</div>`;
 
     } else {
 
-      html += `<div class="feedback-banner incorrect"><b class="title">❌ Incorrect.</b>`;
+      html +=
+        `<div class="feedback-banner incorrect"><b class="title">❌ Incorrect.</b>`;
 
       if (q.type === 'MCQ') {
 
@@ -1223,7 +1388,9 @@
         q.options.forEach((opt, i) => {
           const letter = letters[i];
 
-          let rowClass = 'feedback-option-row';
+          let rowClass =
+            'feedback-option-row';
+
           let tag = '';
 
           if (letter === q.answer) {
@@ -1231,22 +1398,30 @@
             tag = ' <b>← Correct Answer</b>';
           }
 
-          if (letter === userAnswer && letter !== q.answer) {
+          if (
+            letter === userAnswer &&
+            letter !== q.answer
+          ) {
             rowClass += ' is-wrong-pick';
             tag = ' <b>← Your Answer</b>';
           }
 
-          html += `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
+          html +=
+            `<div class="${rowClass}">${letter}) ${opt}${tag}</div>`;
         });
 
       } else {
 
-        html += `<div class="feedback-option-row is-wrong-pick">Your answer: <b>${userAnswer}</b></div>`;
-        html += `<div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>`;
+        html +=
+          `<div class="feedback-option-row is-wrong-pick">Your answer: <b>${userAnswer}</b></div>`;
+
+        html +=
+          `<div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>`;
       }
 
       if (q.explanation) {
-        html += `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
+        html +=
+          `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`;
       }
 
       html += `</div>`;
@@ -1255,20 +1430,33 @@
     feedbackBox.innerHTML = html;
   }
 
+
   // ================= NAVIGATION =================
   prevBtn.addEventListener('click', () => {
     if (quizState.currentIndex > 0) {
       quizState.currentIndex--;
       renderQuestion();
+
+      if (questionNavBackdrop.classList.contains('open')) {
+        renderQuestionNavGrid();
+      }
     }
   });
 
   nextBtn.addEventListener('click', () => {
-    if (quizState.currentIndex < quizState.questions.length - 1) {
+    if (
+      quizState.currentIndex <
+      quizState.questions.length - 1
+    ) {
       quizState.currentIndex++;
       renderQuestion();
+
+      if (questionNavBackdrop.classList.contains('open')) {
+        renderQuestionNavGrid();
+      }
     }
   });
+
 
   // ================= JUMP TO QUESTION =================
   navToggleBtn.addEventListener('click', () => {
@@ -1280,34 +1468,72 @@
     questionNavBackdrop.classList.remove('open');
   });
 
-  // Clicking the dimmed backdrop (outside the panel) also closes it
-  questionNavBackdrop.addEventListener('click', (e) => {
-    if (e.target === questionNavBackdrop) {
-      questionNavBackdrop.classList.remove('open');
-    }
-  });
 
   function renderQuestionNavGrid() {
-    questionNavGrid.innerHTML = quizState.questions.map((q, idx) => {
-      let classes = 'q-nav-btn';
+    questionNavGrid.innerHTML =
+      quizState.questions.map((q, idx) => {
 
-      if (idx === quizState.currentIndex) classes += ' current';
-      if (quizState.checked[q.number]) classes += ' locked';
-      else if (
-        quizState.answers[q.number] !== undefined &&
-        quizState.answers[q.number] !== null &&
-        quizState.answers[q.number].toString().trim() !== ''
-      ) classes += ' answered';
+        let classes = 'q-nav-btn';
 
-      return `<button class="${classes}" onclick="jumpToQuestion(${idx})">${q.number}</button>`;
-    }).join('');
+        if (idx === quizState.currentIndex) {
+          classes += ' current';
+        }
+
+        /*
+          Only checked answers are classified as correct
+          or incorrect.
+
+          Correct = green
+          Incorrect = red
+          Unanswered = normal/default
+        */
+        if (quizState.checked[q.number]) {
+
+          classes += ' locked';
+
+          if (isAnswerCorrect(q)) {
+            classes += ' correct';
+          } else {
+            classes += ' incorrect';
+          }
+
+        } else if (
+          quizState.answers[q.number] !== undefined &&
+          quizState.answers[q.number] !== null &&
+          quizState.answers[q.number].toString().trim() !== ''
+        ) {
+
+          classes += ' answered';
+        }
+
+        return `
+          <button
+            class="${classes}"
+            onclick="jumpToQuestion(${idx})"
+          >
+            ${q.number}
+          </button>`;
+
+      }).join('');
   }
+
 
   function jumpToQuestion(idx) {
+    /*
+      The navigator stays open after selecting a question.
+      Only the current question changes.
+    */
     quizState.currentIndex = idx;
-    questionNavBackdrop.classList.remove('open');
+
     renderQuestion();
+
+    /*
+      Re-render the navigator so the newly selected
+      question receives the current-question styling.
+    */
+    renderQuestionNavGrid();
   }
+
 
   // ================= SUBMIT & QUIT =================
   submitBtn.addEventListener('click', () => {
@@ -1329,6 +1555,7 @@
     finalizeQuiz('quit');
   });
 
+
   // ================= RESULTS =================
   function finalizeQuiz(mode = 'manual') {
     if (quizState.submitted) return;
@@ -1343,7 +1570,9 @@
         skippedCount = 0;
 
     quizState.questions.forEach(q => {
-      const userAnswer = quizState.answers[q.number];
+
+      const userAnswer =
+        quizState.answers[q.number];
 
       const wasAnswered =
         userAnswer !== undefined &&
@@ -1355,11 +1584,15 @@
         return;
       }
 
-      if (isAnswerCorrect(q)) correctCount++;
-      else wrongCount++;
+      if (isAnswerCorrect(q)) {
+        correctCount++;
+      } else {
+        wrongCount++;
+      }
     });
 
-    const total = quizState.questions.length;
+    const total =
+      quizState.questions.length;
 
     const pct =
       total > 0
@@ -1367,8 +1600,9 @@
         : 0;
 
     const scoreClass =
-      pct >= 80 ? 'good' :
-      (pct >= 50 ? 'mid' : 'bad');
+      pct >= 80
+        ? 'good'
+        : (pct >= 50 ? 'mid' : 'bad');
 
     let statusHtml =
       `<span class="status-pill manual">✅ SUBMITTED</span>`;
@@ -1376,10 +1610,12 @@
     let modeText = 'Submitted';
 
     if (mode === 'auto') {
+
       statusHtml =
         `<span class="status-pill auto">⏰ TIME EXPIRED — AUTO-SUBMITTED</span>`;
 
-      modeText = 'Auto-submitted (time expired)';
+      modeText =
+        'Auto-submitted (time expired)';
 
     } else if (mode === 'quit') {
 
@@ -1397,32 +1633,44 @@
 
         <div class="stat-block">
           <div class="stat-label">Score</div>
-          <div class="stat-value ${scoreClass}">${correctCount} / ${total}</div>
+          <div class="stat-value ${scoreClass}">
+            ${correctCount} / ${total}
+          </div>
         </div>
 
         <div class="stat-block">
           <div class="stat-label">Percentage</div>
-          <div class="stat-value ${scoreClass}">${pct}%</div>
+          <div class="stat-value ${scoreClass}">
+            ${pct}%
+          </div>
         </div>
 
         <div class="stat-block">
           <div class="stat-label">Correct</div>
-          <div class="stat-value good">${correctCount}</div>
+          <div class="stat-value good">
+            ${correctCount}
+          </div>
         </div>
 
         <div class="stat-block">
           <div class="stat-label">Incorrect</div>
-          <div class="stat-value bad">${wrongCount}</div>
+          <div class="stat-value bad">
+            ${wrongCount}
+          </div>
         </div>
 
         <div class="stat-block">
           <div class="stat-label">Skipped</div>
-          <div class="stat-value">${skippedCount}</div>
+          <div class="stat-value">
+            ${skippedCount}
+          </div>
         </div>
 
         <div class="stat-block">
           <div class="stat-label">Time Left at End</div>
-          <div class="stat-value" style="font-size:18px;">${formatTime(quizState.remainingSeconds)}</div>
+          <div class="stat-value" style="font-size:18px;">
+            ${formatTime(quizState.remainingSeconds)}
+          </div>
         </div>
 
       </div>
@@ -1431,7 +1679,9 @@
     let breakdownHtml = '';
 
     quizState.questions.forEach(q => {
-      const userAnswer = quizState.answers[q.number];
+
+      const userAnswer =
+        quizState.answers[q.number];
 
       const wasAnswered =
         userAnswer !== undefined &&
@@ -1443,41 +1693,61 @@
 
       if (!wasAnswered) {
 
-        badgeHtml = '<span class="badge skip">SKIPPED</span>';
+        badgeHtml =
+          '<span class="badge skip">SKIPPED</span>';
 
       } else if (isAnswerCorrect(q)) {
 
-        badgeHtml = '<span class="badge pass">CORRECT</span>';
+        badgeHtml =
+          '<span class="badge pass">CORRECT</span>';
 
       } else {
 
-        badgeHtml = '<span class="badge fail">INCORRECT</span>';
+        badgeHtml =
+          '<span class="badge fail">INCORRECT</span>';
       }
 
       if (q.type === 'MCQ') {
 
         const letters = ['A', 'B', 'C', 'D'];
 
-        resultLine = '<div style="margin:10px 0;">';
+        resultLine =
+          '<div style="margin:10px 0;">';
 
         q.options.forEach((opt, i) => {
+
           const letter = letters[i];
 
-          let rowClass = 'feedback-option-row';
+          let rowClass =
+            'feedback-option-row';
+
           let tag = '';
 
           if (letter === q.answer) {
+
             rowClass += ' is-correct';
-            tag = ' <b>(Correct Answer)</b>';
+
+            tag =
+              ' <b>(Correct Answer)</b>';
           }
 
-          if (letter === userAnswer && letter !== q.answer) {
+          if (
+            letter === userAnswer &&
+            letter !== q.answer
+          ) {
+
             rowClass += ' is-wrong-pick';
-            tag = ' <b>(Your Answer)</b>';
-          }
 
-          else if (letter === userAnswer && letter === q.answer) {
-            tag += ' <b>(Your Answer ✓)</b>';
+            tag =
+              ' <b>(Your Answer)</b>';
+
+          } else if (
+            letter === userAnswer &&
+            letter === q.answer
+          ) {
+
+            tag +=
+              ' <b>(Your Answer ✓)</b>';
           }
 
           resultLine +=
@@ -1488,34 +1758,54 @@
 
       } else {
 
-        resultLine = `<div style="margin:10px 0;">
-          <div class="feedback-option-row">Your answer: <b>${wasAnswered ? userAnswer : '(no answer given)'}</b></div>
-          <div class="feedback-option-row is-correct">Correct answer: <b>${q.answer}</b></div>
-        </div>`;
+        resultLine = `
+          <div style="margin:10px 0;">
+            <div class="feedback-option-row">
+              Your answer:
+              <b>
+                ${wasAnswered ? userAnswer : '(no answer given)'}
+              </b>
+            </div>
+
+            <div class="feedback-option-row is-correct">
+              Correct answer:
+              <b>${q.answer}</b>
+            </div>
+          </div>`;
       }
 
       breakdownHtml += `
         <div class="breakdown-card">
 
           <div class="breakdown-card-header">
-            <div><b>Q${q.number}.</b> ${q.question}</div>
+            <div>
+              <b>Q${q.number}.</b>
+              ${q.question}
+            </div>
+
             ${badgeHtml}
           </div>
 
           ${resultLine}
 
-          ${q.explanation
-            ? `<div class="feedback-explanation"><b>Explanation:</b> ${q.explanation}</div>`
-            : ''
+          ${
+            q.explanation
+              ? `<div class="feedback-explanation">
+                   <b>Explanation:</b>
+                   ${q.explanation}
+                 </div>`
+              : ''
           }
 
         </div>
       `;
     });
 
-    resultsBreakdown.innerHTML = breakdownHtml;
+    resultsBreakdown.innerHTML =
+      breakdownHtml;
 
-    const attemptNumber = quizHistory.length + 1;
+    const attemptNumber =
+      quizHistory.length + 1;
 
     const timeLabel =
       new Date().toLocaleTimeString([], {
@@ -1524,16 +1814,22 @@
       });
 
     quizHistory.push({
-      label: `Attempt ${attemptNumber} — ${correctCount}/${total} (${pct}%)`,
-      meta: `${timeLabel} • ${modeText}`,
-      summaryHTML: resultsSummary.innerHTML,
-      breakdownHTML: resultsBreakdown.innerHTML
+      label:
+        `Attempt ${attemptNumber} — ${correctCount}/${total} (${pct}%)`,
+
+      meta:
+        `${timeLabel} • ${modeText}`,
+
+      summaryHTML:
+        resultsSummary.innerHTML,
+
+      breakdownHTML:
+        resultsBreakdown.innerHTML
     });
 
     viewQuiz.classList.add('hidden');
     viewResults.classList.remove('hidden');
 
-    // Show history card again after submission
     renderHistoryList();
 
     window.scrollTo({
@@ -1542,26 +1838,35 @@
     });
   }
 
+
   // ================= HISTORY LIST =================
   function renderHistoryList() {
 
-    // Only render if there's history AND a quiz is not actively running
     if (
       quizHistory.length === 0 ||
       !viewQuiz.classList.contains('hidden')
     ) {
+
       historyCard.classList.add('hidden');
+
       return;
     }
 
     historyCard.classList.remove('hidden');
 
-    historyList.innerHTML = quizHistory.map((entry, idx) => `
+    historyList.innerHTML =
+      quizHistory.map((entry, idx) => `
+
       <div class="history-row">
 
         <div>
-          <span class="history-label">${entry.label}</span>
-          <span class="history-meta">${entry.meta}</span>
+          <span class="history-label">
+            ${entry.label}
+          </span>
+
+          <span class="history-meta">
+            ${entry.meta}
+          </span>
         </div>
 
         <button
@@ -1572,16 +1877,23 @@
         </button>
 
       </div>
+
     `).join('');
   }
 
+
   function viewHistoryEntry(idx) {
-    const entry = quizHistory[idx];
+
+    const entry =
+      quizHistory[idx];
 
     if (!entry) return;
 
-    resultsSummary.innerHTML = entry.summaryHTML;
-    resultsBreakdown.innerHTML = entry.breakdownHTML;
+    resultsSummary.innerHTML =
+      entry.summaryHTML;
+
+    resultsBreakdown.innerHTML =
+      entry.breakdownHTML;
 
     viewInput.classList.add('hidden');
     viewQuiz.classList.add('hidden');
@@ -1594,6 +1906,7 @@
       behavior: 'smooth'
     });
   }
+
 
   newQuizBtn.addEventListener('click', () => {
 
@@ -1611,23 +1924,32 @@
     });
   });
 
+
   retakeQuizBtn.addEventListener('click', () => {
 
     clearInterval(quizState.timerInterval);
 
-    // Reset attempt state keeping the same questions
-    quizState.remainingSeconds = quizState.totalSeconds;
+    quizState.remainingSeconds =
+      quizState.totalSeconds;
+
     quizState.currentIndex = 0;
+
     quizState.answers = {};
+
     quizState.checked = {};
+
     quizState.submitted = false;
+
     quizState.paused = false;
 
     viewResults.classList.add('hidden');
+
     historyCard.classList.add('hidden');
+
     viewQuiz.classList.remove('hidden');
 
     renderQuestion();
+
     startTimer();
 
     window.scrollTo({
@@ -1635,6 +1957,7 @@
       behavior: 'smooth'
     });
   });
+
 </script>
 
 </body>
